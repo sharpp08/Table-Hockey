@@ -201,6 +201,7 @@ class EndState(BaseState):
         try:
             with open(SCORES_PATH,"r",encoding="utf-8") as f: data=json.load(f)
         except (OSError,ValueError): data={}
+        if not isinstance(data, dict): data={}
         difficulty=self.app.settings.get("ai_difficulty","NORMAL")
         record=data.get(difficulty,{"wins":0,"best_time":None}); new=False
         if self.victory:
@@ -224,7 +225,8 @@ class EndState(BaseState):
         draw_text(screen,f"TIME PLAYED  {self.app._format_time(self.match.match_time)}",(w//2,int(h*.37)),25)
         draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.43)),25,config.COLOR_GOLD)
         draw_text(screen,f"GOALS SCORED  {self.match.players[0].score}",(w//2,int(h*.49)),24)
-        draw_text(screen,"NEW BEST TIME!" if self.record else "CAREER RECORD UPDATED",(w//2,int(h*.55)),21,config.COLOR_TEXT_DIM)
+        status = "NEW BEST TIME!" if self.victory and self.record else ("CAREER WIN SAVED" if self.victory else "HIGH SCORE RETAINED")
+        draw_text(screen,status,(w//2,int(h*.55)),21,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
