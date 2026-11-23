@@ -64,8 +64,14 @@ class TableHockeyApp:
 
     def apply_runtime_settings(self, rebuild_video=False):
         if rebuild_video:
+            # Recreate the display/layout without discarding an in-progress
+            # match (Settings can also be opened from the pause screen).
             self._apply_video()
-            self._build_match()
+            self.layout = Layout(*self.settings.resolution)
+            self.match.configure_layout(self.layout)
+            self.match.configure_settings(self.settings)
+            self.renderer = TableRenderer(self.layout, self.settings.quality)
+            self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
         else:
             self.match.configure_settings(self.settings)
             self.renderer = TableRenderer(self.layout, self.settings.quality)
