@@ -4,6 +4,7 @@ import config
 
 def draw_text(surface, text, center, size=30, color=config.COLOR_TEXT, bold=False):
     font = pygame.font.Font(None, max(14, int(size)))
+    font.set_bold(bool(bold))
     image = font.render(str(text), True, color)
     surface.blit(image, image.get_rect(center=center))
     return image.get_rect(center=center)
