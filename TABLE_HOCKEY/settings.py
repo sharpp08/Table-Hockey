@@ -32,12 +32,14 @@ class SettingsStore:
             if os.path.exists(SETTINGS_PATH):
                 with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
                     raw = json.load(f)
+                if not isinstance(raw, dict):
+                    raise ValueError("settings.json must contain a JSON object")
                 for key, value in raw.items():
                     if key in self.data:
                         self.data[key] = value
             # validate
             self._validate()
-        except (json.JSONDecodeError, OSError) as exc:
+        except (json.JSONDecodeError, OSError, ValueError, TypeError, AttributeError) as exc:
             # Corrupt or unreadable file - fall back to defaults.
             print("[settings] could not load config, using defaults:", exc)
             self.data = copy.deepcopy(DEFAULT_SETTINGS)
