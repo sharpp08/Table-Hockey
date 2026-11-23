@@ -64,11 +64,23 @@ class TableHockeyApp:
 
     def apply_runtime_settings(self, rebuild_video=False):
         if rebuild_video:
-            # Recreate the display/layout without discarding an in-progress
-            # match (Settings can also be opened from the pause screen).
+            # Preserve the live match when settings are opened from PAUSED.
+            old_layout = self.layout
+            puck_pos = self.match.puck.pos.copy()
+            puck_velocity = self.match.puck.velocity.copy()
+            paddle_data = [(p.pos.copy(), p.velocity.copy()) for p in self.match.paddles]
             self._apply_video()
             self.layout = Layout(*self.settings.resolution)
-            self.match.configure_layout(self.layout)
+            if (old_layout.w, old_layout.h) != (self.layout.w, self.layout.h):
+                sx, sy = self.layout.w / old_layout.w, self.layout.h / old_layout.h
+                self.match.configure_layout(self.layout)
+                self.match.puck.pos.update(puck_pos.x * sx, puck_pos.y * sy)
+                self.match.puck.velocity.update(puck_velocity.x * sx, puck_velocity.y * sy)
+                for paddle, (position, velocity) in zip(self.match.paddles, paddle_data):
+                    paddle.pos.update(position.x * sx, position.y * sy)
+                    paddle.previous_pos = paddle.pos.copy()
+                    paddle.velocity.update(velocity.x * sx, velocity.y * sy)
+                self.match.ai.reset(self.match.paddles[1].pos)
             self.match.configure_settings(self.settings)
             self.renderer = TableRenderer(self.layout, self.settings.quality)
             self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
