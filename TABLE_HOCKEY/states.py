@@ -174,7 +174,9 @@ class SettingsState(BaseState):
         if self.awaiting_key and event.type==pygame.KEYDOWN:
             if event.key==pygame.K_ESCAPE: self.awaiting_key=None; return
             keyname=pygame.key.name(event.key); binds=dict(self.app.settings.get("keybindings",{}))
-            if keyname in binds.values(): self.app.audio.play("wall"); return
+            if keyname in binds.values() and binds.get(self.awaiting_key) != keyname:
+                self.app.audio.play("wall")
+                return
             binds[self.awaiting_key]=keyname; self.app.settings.set("keybindings",binds)
             for b in self.key_buttons:
                 action=b.label.split(":")[0].lower()
@@ -212,7 +214,6 @@ class EndState(BaseState):
     def again(self): self.app.new_match(); self.manager.change("PLAYING")
     def menu(self): self.app.new_match(); self.manager.change("MENU")
     def update(self,dt):
-        if self.victory: self.match.effects.start_celebration(self.match.celebration_color)
         self.match.effects.update(dt); mouse=pygame.mouse.get_pos()
         for i,b in enumerate(self.buttons): b.update(dt,mouse,i==self.index)
     def draw(self,screen):
