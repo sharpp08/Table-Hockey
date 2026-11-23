@@ -77,11 +77,15 @@ MATCH_TIMER = False       # show an elapsed timer in the HUD
 # max_speed  : paddle top speed as a fraction of a reference
 # aim_error  : random vertical error in degrees
 # aggression : how far the AI presses up-field to attack
-AI_PRESETS = {
-    "EASY":   {"reaction": 0.45, "max_speed": 300.0, "aim_error": 22.0, "aggression": 0.15},
-    "NORMAL": {"reaction": 0.22, "max_speed": 420.0, "aim_error": 11.0, "aggression": 0.30},
-    "HARD":   {"reaction": 0.09, "max_speed": 560.0, "aim_error": 4.0,  "aggression": 0.45},
+DIFFICULTY = {
+    # AI reaction time, movement speed, shot error and forward pressure.
+    "EASY":      {"reaction": 0.52, "max_speed": 285.0, "aim_error": 25.0, "aggression": 0.08},
+    "NORMAL":    {"reaction": 0.24, "max_speed": 420.0, "aim_error": 11.0, "aggression": 0.30},
+    "HARD":      {"reaction": 0.12, "max_speed": 535.0, "aim_error": 5.0,  "aggression": 0.48},
+    "NIGHTMARE": {"reaction": 0.055, "max_speed": 650.0, "aim_error": 1.8, "aggression": 0.68},
 }
+# Backwards-compatible name used by existing settings and AI call sites.
+AI_PRESETS = DIFFICULTY
 
 # Default settings (used when no config file exists yet)
 DEFAULT_SETTINGS = {
@@ -94,6 +98,10 @@ DEFAULT_SETTINGS = {
     "win_score": 5,           # 3 .. 10
     "ai_difficulty": "NORMAL",
     "fullscreen": False,
+    "show_fps": True,
+    "screen_shake": True,
+    "fps_cap": 60,
+    "keybindings": {"up": "w", "left": "a", "down": "s", "right": "d"},
     "resolution": BASE_RESOLUTION,
     "graphics_quality": "HIGH",  # LOW, MEDIUM, HIGH
     "show_match_timer": MATCH_TIMER,
