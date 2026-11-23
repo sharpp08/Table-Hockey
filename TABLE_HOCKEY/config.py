@@ -1,0 +1,122 @@
+"""
+Table Hockey - Shared configuration, constants, colors and layout metrics.
+
+Everything that describes the table geometry, the color palette and the
+global tuning numbers lives here so the rest of the codebase can rely on
+a single source of truth.
+"""
+
+import math
+
+# --------------------------------------------------------------------------- #
+# Window / display
+# --------------------------------------------------------------------------- #
+BASE_RESOLUTION = (1280, 720)          # internal logical resolution
+RESOLUTIONS = [
+    (960, 540),
+    (1280, 720),
+    (1600, 900),
+]
+CAPTION = "TABLE HOCKEY"
+
+# --------------------------------------------------------------------------- #
+# Colors (r, g, b)
+# --------------------------------------------------------------------------- #
+COLOR_BLACK        = (8, 10, 16)
+COLOR_BG           = (13, 16, 24)
+COLOR_BG_LIGHT     = (26, 31, 45)
+COLOR_TABLE        = (20, 27, 44)
+COLOR_TABLE_EDGE   = (60, 72, 100)
+COLOR_TABLE_BORDER = (18, 22, 34)
+COLOR_LINE         = (90, 110, 150)
+COLOR_LINE_FAINT   = (50, 60, 85)
+COLOR_WHITE        = (235, 240, 250)
+COLOR_TEXT         = (225, 230, 240)
+COLOR_TEXT_DIM     = (135, 145, 165)
+
+COLOR_P1           = (56, 140, 255)    # blue
+COLOR_P1_LIGHT     = (150, 200, 255)
+COLOR_P1_DARK      = (30, 80, 170)
+COLOR_P2           = (255, 80, 80)     # red
+COLOR_P2_LIGHT     = (255, 160, 160)
+COLOR_P2_DARK      = (170, 40, 40)
+COLOR_PUCK         = (240, 245, 255)
+COLOR_GOLD         = (255, 200, 90)
+COLOR_GOAL_FLASH   = (255, 255, 255)
+
+# --------------------------------------------------------------------------- #
+# Table layout (fractions of the base 1280x720 resolution).
+# The game scales these by width/height at runtime so it works at any
+# resolution / fullscreen.
+# --------------------------------------------------------------------------- #
+TABLE_W = 0.90
+TABLE_H = 0.84
+BORDER = 0.012          # wall thickness
+RADIUS = 0.055         # corner rounding
+GOAL_W = 0.36          # goal opening height
+GOAL_DEPTH = 0.045     # how far the goal mouth sits into the table
+
+PADDLE_R = 0.046       # paddle radius
+PUCK_R   = 0.022       # puck radius
+
+# Physics tuning (per-second values)
+PUCK_ACCEL   = 1900.0  # extra velocity applied on a paddle hit (px/s at base)
+PUCK_FRICTION = 1.05   # exponential friction factor per second
+PUCK_MIN_SPEED = 130.0 # px/s at base resolution
+PUCK_MAX_SPEED = 1150.0
+PADDLE_SPEED   = 420.0 # px/s at base resolution
+PADDLE_ACCEL_FACTOR = 1.55  # how much paddle velocity boosts the puck
+PADDLE_KICK      = 520.0   # base kick on a paddle hit (px/s at base)
+
+GOAL_CELEBRATION = 1.8    # seconds of the goal animation
+COUNTDOWN_SECONDS = 3     # pre-serve countdown
+MATCH_TIMER = False       # show an elapsed timer in the HUD
+
+# AI difficulty presets.
+# reaction   : seconds before the AI re-targets
+# max_speed  : paddle top speed as a fraction of a reference
+# aim_error  : random vertical error in degrees
+# aggression : how far the AI presses up-field to attack
+AI_PRESETS = {
+    "EASY":   {"reaction": 0.45, "max_speed": 300.0, "aim_error": 22.0, "aggression": 0.15},
+    "NORMAL": {"reaction": 0.22, "max_speed": 420.0, "aim_error": 11.0, "aggression": 0.30},
+    "HARD":   {"reaction": 0.09, "max_speed": 560.0, "aim_error": 4.0,  "aggression": 0.45},
+}
+
+# Default settings (used when no config file exists yet)
+DEFAULT_SETTINGS = {
+    "master_volume": 0.8,
+    "sfx_volume": 0.8,
+    "music_volume": 0.35,
+    "music_enabled": True,
+    "puck_speed": 1.0,        # 0.5 .. 1.5
+    "paddle_speed": 1.0,      # 0.5 .. 1.5
+    "win_score": 5,           # 3 .. 10
+    "ai_difficulty": "NORMAL",
+    "fullscreen": False,
+    "resolution": BASE_RESOLUTION,
+    "graphics_quality": "HIGH",  # LOW, MEDIUM, HIGH
+    "show_match_timer": MATCH_TIMER,
+}
+
+# Graphics quality flags
+QUALITY_FLAGS = {
+    "LOW":    {"trails": False, "glow": False, "particles": 0,  "blur": False},
+    "MEDIUM": {"trails": True,  "glow": False, "particles": 24, "blur": False},
+    "HIGH":   {"trails": True,  "glow": True,  "particles": 60, "blur": True},
+}
+
+
+def clamp(value, lo, hi):
+    return max(lo, min(hi, value))
+
+
+def lerp(a, b, t):
+    return a + (b - a) * t
+
+
+def scale_color(c, f):
+    """Return color c multiplied by brightness factor f, clamped 0..255."""
+    return (clamp(int(c[0] * f), 0, 255),
+            clamp(int(c[1] * f), 0, 255),
+            clamp(int(c[2] * f), 0, 255))
