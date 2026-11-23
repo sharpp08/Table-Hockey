@@ -204,9 +204,9 @@ class Match:
             self._play("win" if scorer == 1 else "lose")
             return
 
-    def pause(self, resume_state="PLAYING"):
-        if self.state in ("PLAYING", "COUNTDOWN"):
-            self.pause_return_state = resume_state
+    def pause(self, resume_state=None):
+        if self.state in ("PLAYING", "COUNTDOWN", "GOAL"):
+            self.pause_return_state = resume_state or self.state
             self.state = "PAUSED"
 
     def resume(self):
@@ -217,7 +217,7 @@ class Match:
         if self.state == "PAUSED":
             self.resume()
         else:
-            self.pause(resume_state or self.pause_return_state)
+            self.pause(resume_state)
 
     def drain_events(self):
         out, self.events = self.events, []
