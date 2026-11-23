@@ -50,14 +50,14 @@ class TableHockeyApp:
             self.audio.stop_music()
 
     def _build_match(self):
-        self.layout = Layout(*self.settings.resolution)
+        self.layout = Layout(*self.screen.get_size())
         self.match = Match(self.layout, self.settings, self.audio)
         self.renderer = TableRenderer(self.layout, self.settings.quality)
         self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
 
     @property
     def layout_size(self):
-        return self.settings.resolution
+        return self.screen.get_size()
 
     def new_match(self):
         self._build_match()
@@ -71,7 +71,7 @@ class TableHockeyApp:
             puck_active = self.match.puck.active
             paddle_data = [(p.pos.copy(), p.velocity.copy()) for p in self.match.paddles]
             self._apply_video()
-            self.layout = Layout(*self.settings.resolution)
+            self.layout = Layout(*self.screen.get_size())
             if (old_layout.w, old_layout.h) != (self.layout.w, self.layout.h):
                 sx, sy = self.layout.w / old_layout.w, self.layout.h / old_layout.h
                 self.match.configure_layout(self.layout)
