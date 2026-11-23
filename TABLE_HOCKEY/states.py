@@ -206,10 +206,15 @@ class EndState(BaseState):
         except (OSError,ValueError): data={}
         if not isinstance(data, dict): data={}
         difficulty=self.app.settings.get("ai_difficulty","NORMAL")
-        record=data.get(difficulty,{"wins":0,"best_time":None}); new=False
+        record=data.get(difficulty,{"wins":0,"best_time":None})
+        if not isinstance(record, dict): record={"wins":0,"best_time":None}
+        new=False
         if self.victory:
-            record["wins"]=int(record.get("wins",0))+1; best=record.get("best_time")
-            if best is None or self.match.match_time<best: record["best_time"]=round(self.match.match_time,2); new=True
+            record["wins"]=int(record.get("wins",0))+1
+            try: best=float(record.get("best_time"))
+            except (TypeError,ValueError): best=None
+            if best is None or self.match.match_time<best:
+                record["best_time"]=round(self.match.match_time,2); new=True
         data[difficulty]=record
         try:
             with open(SCORES_PATH,"w",encoding="utf-8") as f: json.dump(data,f,indent=2)
