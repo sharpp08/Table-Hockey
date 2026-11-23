@@ -68,6 +68,7 @@ class TableHockeyApp:
             old_layout = self.layout
             puck_pos = self.match.puck.pos.copy()
             puck_velocity = self.match.puck.velocity.copy()
+            puck_active = self.match.puck.active
             paddle_data = [(p.pos.copy(), p.velocity.copy()) for p in self.match.paddles]
             self._apply_video()
             self.layout = Layout(*self.settings.resolution)
@@ -76,6 +77,7 @@ class TableHockeyApp:
                 self.match.configure_layout(self.layout)
                 self.match.puck.pos.update(puck_pos.x * sx, puck_pos.y * sy)
                 self.match.puck.velocity.update(puck_velocity.x * sx, puck_velocity.y * sy)
+                self.match.puck.active = puck_active
                 for paddle, (position, velocity) in zip(self.match.paddles, paddle_data):
                     paddle.pos.update(position.x * sx, position.y * sy)
                     paddle.previous_pos = paddle.pos.copy()
