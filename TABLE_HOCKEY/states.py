@@ -121,7 +121,7 @@ class PauseState(BaseState):
 class SettingsState(BaseState):
     def __init__(self,manager,return_to="MENU"):
         super().__init__(manager); self.return_to=return_to; self.snapshot=dict(self.app.settings.data)
-        self.awaiting_key=None; self.controls=[]; self.buttons=[]; self.key_buttons=[]; self._build()
+        self.awaiting_key=None; self.key_error=None; self.controls=[]; self.buttons=[]; self.key_buttons=[]; self._build()
     def _set(self,key,value): self.app.settings.set(key,value); self.app._apply_audio()
     def _build(self):
         w,h=self.app.screen.get_size(); sx,sy=w/1280,h/720
@@ -149,7 +149,7 @@ class SettingsState(BaseState):
     def _resolution(self,value):
         x,y=value.split("x"); self._set("resolution",(int(x),int(y)))
     def _fps(self,value): self._set("fps_cap",0 if value=="UNLIMITED" else int(value))
-    def _capture(self,action): self.awaiting_key=action
+    def _capture(self,action): self.awaiting_key=action; self.key_error=None
     def reset(self):
         from config import DEFAULT_SETTINGS
         import copy
@@ -169,19 +169,22 @@ class SettingsState(BaseState):
         draw_text(screen,"KEY BINDINGS • CLICK AN ACTION, THEN PRESS A KEY",(360,390),18,config.COLOR_TEXT_DIM)
         for item in self.controls: item.draw(screen)
         for b in self.key_buttons+self.buttons: b.draw(screen)
-        if self.awaiting_key: draw_text(screen,f"PRESS A KEY FOR {self.awaiting_key.upper()} • ESC TO CANCEL",(w//2,h-35),22,config.COLOR_GOLD)
+        if self.awaiting_key:
+            prompt = self.key_error or f"PRESS A KEY FOR {self.awaiting_key.upper()} • ESC TO CANCEL"
+            draw_text(screen,prompt,(w//2,h-35),22,config.COLOR_P2_LIGHT if self.key_error else config.COLOR_GOLD)
     def handle_event(self,event):
         if self.awaiting_key and event.type==pygame.KEYDOWN:
-            if event.key==pygame.K_ESCAPE: self.awaiting_key=None; return
+            if event.key==pygame.K_ESCAPE: self.awaiting_key=None; self.key_error=None; return
             keyname=pygame.key.name(event.key); binds=dict(self.app.settings.get("keybindings",{}))
             if keyname in binds.values() and binds.get(self.awaiting_key) != keyname:
+                self.key_error="THAT KEY IS ALREADY ASSIGNED"
                 self.app.audio.play("wall")
                 return
             binds[self.awaiting_key]=keyname; self.app.settings.set("keybindings",binds)
             for b in self.key_buttons:
                 action=b.label.split(":")[0].lower()
                 if action==self.awaiting_key: b.label=f"{action.upper()}: {keyname.upper()}"
-            self.awaiting_key=None; return
+            self.awaiting_key=None; self.key_error=None; return
         for item in self.controls:
             if item.handle_event(event): return
         for b in self.key_buttons+self.buttons:
