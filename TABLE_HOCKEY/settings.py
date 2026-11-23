@@ -74,6 +74,25 @@ class SettingsStore:
         if d["graphics_quality"] not in QUALITY_FLAGS:
             d["graphics_quality"] = "HIGH"
         d["show_match_timer"] = bool(d.get("show_match_timer", False))
+        d["show_fps"] = bool(d.get("show_fps", True))
+        d["screen_shake"] = bool(d.get("screen_shake", True))
+        try:
+            d["fps_cap"] = int(d.get("fps_cap", 60))
+        except (TypeError, ValueError):
+            d["fps_cap"] = 60
+        if d["fps_cap"] not in (0, 30, 60, 120):
+            d["fps_cap"] = 60
+        defaults = {"up": "w", "left": "a", "down": "s", "right": "d"}
+        bindings = d.get("keybindings", {})
+        if not isinstance(bindings, dict):
+            bindings = {}
+        clean = {}
+        for action, default_key in defaults.items():
+            key = str(bindings.get(action, default_key)).lower()
+            clean[action] = key if key and len(key) <= 16 else default_key
+        if len(set(clean.values())) != len(clean):
+            clean = defaults
+        d["keybindings"] = clean
 
     # -- accessors ---------------------------------------------------------- #
     def get(self, key, default=None):
@@ -102,7 +121,7 @@ class SettingsStore:
 
     @property
     def ai_preset(self):
-        return config.AI_PRESETS[self.data["ai_difficulty"]]
+        return config.DIFFICULTY[self.data["ai_difficulty"]]
 
     @property
     def sfx_volume(self):
