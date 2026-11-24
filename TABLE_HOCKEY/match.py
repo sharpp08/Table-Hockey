@@ -64,7 +64,7 @@ class Match:
             "reaction": max(0.032, base["reaction"] - 0.105 * curve),
             "aim_error": max(0.85, base["aim_error"] - 9.15 * curve),
             "aggression": min(0.88, base["aggression"] + 0.56 * curve),
-            "tracking": 9.0 + 13.0 * curve,
+            "tracking": 11.0 + 13.0 * curve,
         }
 
     def configure_settings(self, settings):
