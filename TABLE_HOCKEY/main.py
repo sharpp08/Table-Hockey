@@ -203,7 +203,7 @@ class TableHockeyApp:
         pygame.draw.rect(surface, config.COLOR_GOLD, progress, border_radius=2)
 
         if self.settings.get("show_match_timer", False):
-            small = pygame.font.Font(None, 22)
+            small = self._font(22)
             timer = small.render(self._format_time(self.match.match_time), True, config.COLOR_TEXT)
             surface.blit(timer, timer.get_rect(midtop=(cx, bar_y + 9)))
 
