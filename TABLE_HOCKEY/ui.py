@@ -107,6 +107,21 @@ class TableRenderer:
             color = config.scale_color(bg_color, 0.7 + 0.35 * shade)
             pygame.draw.line(self.surface, color, (0, y), (w, y))
 
+        # Static anime-arena star field and distant speed cuts (cached once).
+        star_layer = pygame.Surface((w, h), pygame.SRCALPHA)
+        for i in range(54):
+            x = (i * 197 + 83) % w
+            y = (i * 113 + 47) % h
+            radius = 1 if i % 4 else 2
+            alpha = 28 + (i * 17) % 48
+            pygame.draw.circle(star_layer, (115, 190, 255, alpha), (x, y), radius)
+        for i in range(9):
+            y = int((i + 1) * h / 11)
+            x = (i * 149) % max(1, w // 3)
+            pygame.draw.line(star_layer, (70, 145, 220, 22),
+                             (x, y), (x + int(w * 0.13), y - int(h * 0.025)), 2)
+        self.surface.blit(star_layer, (0, 0))
+
         # Table base (rounded)
         rect = pygame.Rect(int(l.table_x), int(l.table_y), int(l.table_w), int(l.table_h))
         radius = int(config.RADIUS * l.w)
@@ -129,6 +144,25 @@ class TableRenderer:
         ccr = int(l.inner_h * 0.16)
         pygame.draw.circle(self.surface, config.COLOR_LINE, (cx, int(l.center_y)), ccr, 3)
         pygame.draw.circle(self.surface, faint_color, (cx, int(l.center_y)), max(2, ccr // 4), 4)
+
+        # Manga-inspired radial energy engraving across the playing surface.
+        energy = pygame.Surface((w, h), pygame.SRCALPHA)
+        energy.set_clip(inner)
+        origin = (cx, int(l.center_y))
+        ray_length = int(l.inner_w * 0.72)
+        for angle_deg in range(0, 360, 15):
+            angle = math.radians(angle_deg)
+            end = (int(origin[0] + math.cos(angle) * ray_length),
+                   int(origin[1] + math.sin(angle) * ray_length))
+            pygame.draw.line(energy, (100, 185, 255, 13), origin, end, 2)
+        for i in range(-8, 9):
+            y = int(l.inner_y + (i + 8) * l.inner_h / 16)
+            pygame.draw.line(energy, (150, 115, 255, 11),
+                             (int(l.inner_x), y + int(l.inner_h * 0.08)),
+                             (int(l.inner_x + l.inner_w), y - int(l.inner_h * 0.08)), 1)
+        energy.set_clip(None)
+        self.surface.blit(energy, (0, 0))
+        pygame.draw.circle(self.surface, (68, 130, 205), origin, int(ccr * 1.12), 1)
 
         # Goal creases (face-off arcs toward each goal)
         for side in (-1, 1):
