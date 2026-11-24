@@ -60,13 +60,13 @@ PADDLE_R = 0.046       # paddle radius
 PUCK_R   = 0.022       # puck radius
 
 # Physics tuning (per-second values)
-PUCK_ACCEL   = 1900.0  # extra velocity applied on a paddle hit (px/s at base)
+PUCK_ACCEL   = 2150.0  # extra velocity applied on a paddle hit (px/s at base)
 PUCK_FRICTION = 1.05   # exponential friction factor per second
-PUCK_MIN_SPEED = 130.0 # px/s at base resolution
-PUCK_MAX_SPEED = 1150.0
-PADDLE_SPEED   = 420.0 # px/s at base resolution
-PADDLE_ACCEL_FACTOR = 1.55  # how much paddle velocity boosts the puck
-PADDLE_KICK      = 520.0   # base kick on a paddle hit (px/s at base)
+PUCK_MIN_SPEED = 155.0 # px/s at base resolution
+PUCK_MAX_SPEED = 1325.0
+PADDLE_SPEED   = 520.0 # px/s at base resolution
+PADDLE_ACCEL_FACTOR = 1.68  # how much paddle velocity boosts the puck
+PADDLE_KICK      = 590.0   # base kick on a paddle hit (px/s at base)
 
 GOAL_CELEBRATION = 1.8    # seconds of the goal animation
 COUNTDOWN_SECONDS = 3     # pre-serve countdown
@@ -79,10 +79,10 @@ MATCH_TIMER = False       # show an elapsed timer in the HUD
 # aggression : how far the AI presses up-field to attack
 DIFFICULTY = {
     # AI reaction time, movement speed, shot error and forward pressure.
-    "EASY":      {"reaction": 0.52, "max_speed": 285.0, "aim_error": 25.0, "aggression": 0.08},
-    "NORMAL":    {"reaction": 0.24, "max_speed": 420.0, "aim_error": 11.0, "aggression": 0.30},
-    "HARD":      {"reaction": 0.12, "max_speed": 535.0, "aim_error": 5.0,  "aggression": 0.48},
-    "NIGHTMARE": {"reaction": 0.055, "max_speed": 650.0, "aim_error": 1.8, "aggression": 0.68},
+    "EASY":      {"reaction": 0.42, "max_speed": 360.0, "aim_error": 22.0, "aggression": 0.12},
+    "NORMAL":    {"reaction": 0.18, "max_speed": 500.0, "aim_error": 9.0,  "aggression": 0.36},
+    "HARD":      {"reaction": 0.085, "max_speed": 625.0, "aim_error": 3.5, "aggression": 0.55},
+    "NIGHTMARE": {"reaction": 0.045, "max_speed": 745.0, "aim_error": 0.8, "aggression": 0.76},
 }
 # Backwards-compatible name used by existing settings and AI call sites.
 AI_PRESETS = DIFFICULTY
