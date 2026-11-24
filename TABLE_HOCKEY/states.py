@@ -252,41 +252,56 @@ class EndState(BaseState):
                       Button((cx-155,int(h*.85),310,46),"QUIT",lambda:setattr(self.app,"running",False))]
         self.index=0
     def _record(self):
-        """Persist career totals and a short match history."""
+        """Save level results and advance campaign only after a win."""
         import datetime
         os.makedirs(SAVE_DIR, exist_ok=True)
         try:
-            with open(SCORES_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        except (OSError, ValueError, TypeError):
-            data = {}
+            with open(SCORES_PATH, "r", encoding="utf-8") as f: data = json.load(f)
+        except (OSError, ValueError, TypeError): data = {}
         if not isinstance(data, dict): data = {}
-        difficulty = self.app.settings.get("ai_difficulty", "NORMAL")
-        record = data.get(difficulty, {})
+        level = max(1, min(30, int(getattr(self.match, "level", 1))))
+        levels = data.get("levels", {})
+        if not isinstance(levels, dict): levels = {}
+        record = levels.get(str(level), {})
         if not isinstance(record, dict): record = {}
-        wins, losses = int(record.get("wins", 0) or 0), int(record.get("losses", 0) or 0)
-        matches = int(record.get("matches", wins + losses) or 0)
-        streak = int(record.get("current_streak", 0) or 0)
-        if self.victory: wins += 1; streak = max(0, streak) + 1
-        else: losses += 1; streak = min(0, streak) - 1
-        matches += 1
-        try: best = float(record.get("best_time"))
+        wins = int(record.get("wins", 0) or 0)
+        losses = int(record.get("losses", 0) or 0)
+        best = record.get("best_time")
+        try: best = float(best) if best is not None else None
         except (TypeError, ValueError): best = None
         new_best = bool(self.victory and (best is None or self.match.match_time < best))
-        if new_best: best = round(self.match.match_time, 2)
-        record.update({"wins":wins,"losses":losses,"matches":matches,"current_streak":streak,"best_time":best})
-        data[difficulty] = record
+        if self.victory:
+            wins += 1
+            record["completed"] = True
+            if new_best: best = round(self.match.match_time, 2)
+        else: losses += 1
+        record.update({"wins": wins, "losses": losses, "best_time": best})
+        levels[str(level)] = record
+        data["levels"] = levels
+        current = max(1, min(30, int(data.get("current_level", 1) or 1)))
+        if self.victory and level >= current: current = min(30, level + 1)
+        data["current_level"] = current
+        self.app.current_level = current
+        difficulty = self.app.settings.get("ai_difficulty", "NORMAL")
+        aggregate = data.get(difficulty, {})
+        if not isinstance(aggregate, dict): aggregate = {}
+        aw = int(aggregate.get("wins", 0) or 0) + (1 if self.victory else 0)
+        al = int(aggregate.get("losses", 0) or 0) + (0 if self.victory else 1)
+        streak = int(aggregate.get("current_streak", 0) or 0)
+        streak = max(0, streak) + 1 if self.victory else min(0, streak) - 1
+        aggregate.update({"wins": aw, "losses": al, "matches": aw+al, "current_streak": streak})
+        data[difficulty] = aggregate
         history = data.get("recent_matches", [])
         if not isinstance(history, list): history = []
-        history.insert(0, {"date":datetime.datetime.now().isoformat(timespec="seconds"),
-            "difficulty":difficulty,"result":"WIN" if self.victory else "LOSS",
-            "player_score":self.match.players[0].score,"cpu_score":self.match.players[1].score,
-            "duration":round(self.match.match_time,2)})
-        data["recent_matches"] = history[:20]
+        history.insert(0, {"date": datetime.datetime.now().isoformat(timespec="seconds"),
+            "level": level, "difficulty": difficulty, "result": "WIN" if self.victory else "LOSS",
+            "player_score": self.match.players[0].score, "cpu_score": self.match.players[1].score,
+            "duration": round(self.match.match_time, 2)})
+        data["recent_matches"] = history[:30]
         try:
             with open(SCORES_PATH, "w", encoding="utf-8") as f: json.dump(data, f, indent=2)
         except (OSError, TypeError, ValueError) as exc:
-            print("[career] could not save match record:", exc)
+            print("[career] could not save level progress:", exc)
         return new_best
     def again(self): self.app.new_match(); self.manager.change("PLAYING")
     def menu(self): self.app.new_match(); self.manager.change("MENU")
