@@ -135,9 +135,15 @@ class AIController:
             contact.y = config.clamp(contact.y, max(layout.min_y, low),
                                       min(layout.max_y, high))
             # On slow pucks, close distance; on fast pucks, lead the future contact.
+            # Commit to the strike instead of merely shadowing the puck.
+            # Move decisively to the contact point, then let paddle momentum drive
+            # the puck toward the selected goal lane.
+            distance_to_contact = paddle.pos.distance_to(contact)
+            urgency = config.clamp(distance_to_contact / max(1.0, w * 0.22), 0.0, 1.0)
+            commit = 0.88 + 0.10 * urgency
             target = pygame.Vector2(
-                config.lerp(home_x, contact.x, 0.72 + 0.22 * approach),
-                config.lerp(predicted_y, contact.y, 0.82),
+                config.lerp(home_x, contact.x, commit),
+                config.lerp(paddle.pos.y, contact.y, 0.92),
             )
             self.last_mode = "attack"
 
@@ -177,7 +183,10 @@ class AIController:
 
         # Smooth target pursuit, with stronger response when the puck threatens goal.
         threat = self.last_mode == "intercept"
-        tracking = self.preset["tracking"] * (1.22 if threat else 1.0)
+        attacking = self.last_mode == "attack"
+        tracking = self.preset["tracking"] * (
+            1.42 if attacking else (1.30 if threat else 1.0)
+        )
         response = 1.0 - math.exp(-tracking * dt)
         self.target += (self.planned_target - self.target) * response
 
@@ -190,7 +199,10 @@ class AIController:
             direction = offset / distance
 
         # Ease speed with distance to target; avoid constant full-speed sliding.
-        mode_factor = 0.88 if self.last_mode == "recover" else 1.0
+        mode_factor = (
+            0.88 if self.last_mode == "recover"
+            else (1.16 if self.last_mode == "attack" else 1.08)
+        )
         base_speed = self.preset["max_speed"] * layout.scale * paddle_speed_scale
         desired_speed = base_speed * mode_factor
         braking_distance = max(paddle.radius * 0.8, desired_speed * desired_speed / 1900.0)
