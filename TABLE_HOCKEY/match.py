@@ -15,8 +15,9 @@ from player import Player, HumanController, P2_CONTROLLER
 
 
 class Match:
-    def __init__(self, layout, settings, audio=None):
+    def __init__(self, layout, settings, audio=None, level=1):
         self.layout = layout
+        self.level = max(1, min(30, int(level)))
         self.settings = settings
         self.audio = audio
         self.rng = random.Random()
@@ -33,7 +34,7 @@ class Match:
         ]
         self.puck = Puck(layout.puck_start(1), layout.puck_r)
         self.physics = PhysicsEngine(layout, self.puck_speed_scale)
-        self.ai = AIController(settings.ai_preset, random.Random())
+        self.ai = AIController(self._level_ai_preset(settings.ai_preset), random.Random())
         self.effects = EffectsManager(settings.quality, random.Random())
 
         self.state = "COUNTDOWN"
@@ -52,12 +53,22 @@ class Match:
         self.effects.clear()
 
     # ------------------------------------------------------------------ #
+    def _level_ai_preset(self, base_preset):
+        """Scale CPU reaction, speed and accuracy gradually across 30 levels."""
+        progress = (self.level - 1) / 29.0
+        preset = dict(base_preset)
+        preset["max_speed"] = float(preset["max_speed"]) * (1.0 + 0.35 * progress)
+        preset["reaction"] = max(0.025, float(preset["reaction"]) * (1.0 - 0.45 * progress))
+        preset["aim_error"] = max(0.15, float(preset["aim_error"]) * (1.0 - 0.80 * progress))
+        preset["aggression"] = min(0.96, float(preset["aggression"]) + 0.18 * progress)
+        return preset
+
     def configure_settings(self, settings):
         self.settings = settings
         self.paddle_speed_scale = settings.get("paddle_speed", 1.0)
         self.puck_speed_scale = settings.get("puck_speed", 1.0)
         self.physics.configure(layout=None, speed_scale=self.puck_speed_scale)
-        self.ai.configure(settings.ai_preset)
+        self.ai.configure(self._level_ai_preset(settings.ai_preset))
         self.effects.configure(settings.quality)
         self.effects.bounds = (self.layout.w, self.layout.h)
 
