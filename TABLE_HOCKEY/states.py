@@ -1,6 +1,6 @@
 """Central state manager and menu/pause/settings/end screens."""
 import json, os, pygame, config
-from menu_ui import Button, Slider, Toggle, Selector, draw_text
+from menu_ui import Button, Slider, Toggle, Selector, draw_text, draw_arcade_background, draw_arcade_panel
 
 SAVE_DIR=os.path.join(os.path.dirname(os.path.abspath(__file__)),"save")
 SCORES_PATH=os.path.join(SAVE_DIR,"high_scores.json")
@@ -45,16 +45,16 @@ class MenuState(BaseState):
         self.time+=dt; mouse=pygame.mouse.get_pos()
         for i,b in enumerate(self.buttons): b.update(dt,mouse,i==self.index)
     def draw(self,screen):
-        w,h=screen.get_size(); screen.fill(config.COLOR_BG)
-        for i in range(32):
-            y=int((i/32*h+self.time*12)%h); pygame.draw.line(screen,(17,22,34),(0,y),(w,y),1)
-        glow=pygame.Surface((w,h),pygame.SRCALPHA)
-        pygame.draw.circle(glow,(30,90,170,24),(w//2,int(h*.25)),int(w*.34)); screen.blit(glow,(0,0))
-        draw_text(screen,"TABLE HOCKEY",(w//2,int(h*.20)),int(h*.105),config.COLOR_WHITE,True)
-        draw_text(screen,f"ARCADE AIR HOCKEY  •  LEVEL {self.app.current_level} / 30",(w//2,int(h*.29)),25,config.COLOR_TEXT_DIM)
+        w,h=screen.get_size()
+        draw_arcade_background(screen,self.time,"TABLE HOCKEY",
+            f"ARCADE AIR HOCKEY  •  CAMPAIGN LEVEL {self.app.current_level:02d} / 30")
+        panel=(w//2-int(w*.19),int(h*.32),int(w*.38),int(h*.43))
+        draw_arcade_panel(screen,panel,config.COLOR_P1,230)
         for b in self.buttons: b.draw(screen)
-        draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.83)),26,config.COLOR_GOLD)
-        draw_text(screen,"W / S or ↑ / ↓   •   ENTER to select",(w//2,int(h*.91)),20,config.COLOR_TEXT_DIM)
+        draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",
+                  (w//2,int(h*.82)),max(20,int(h*.036)),config.COLOR_GOLD,True)
+        draw_text(screen,"W / S OR ARROWS  •  ENTER TO SELECT  •  MOUSE TO NAVIGATE",
+                  (w//2,int(h*.92)),max(14,int(h*.025)),config.COLOR_TEXT_DIM)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
             if event.key in (pygame.K_DOWN,pygame.K_s): self.index=(self.index+1)%len(self.buttons)
@@ -123,15 +123,18 @@ class LevelSelectState(BaseState):
         self.back_button.update(dt,mouse)
 
     def draw(self,screen):
-        screen.fill(config.COLOR_BG)
         w,h=screen.get_size()
-        draw_text(screen,"CAMPAIGN SELECT",(w//2,int(h*.13)),56,config.COLOR_GOLD,True)
-        draw_text(screen,f"UNLOCKED THROUGH LEVEL {self.unlocked}  /  30",
-                  (w//2,int(h*.21)),25,config.COLOR_TEXT_DIM)
-        for b in self.level_buttons: b.draw(screen)
+        draw_arcade_background(screen,self.app.game_time,"CAMPAIGN SELECT",
+            f"SECTOR ACCESS  •  {self.unlocked:02d} / 30 LEVELS UNLOCKED")
+        grid_rect=(int(w*.12),int(h*.265),int(w*.76),int(h*.49))
+        draw_arcade_panel(screen,grid_rect,config.COLOR_P1,205)
+        for i,b in enumerate(self.level_buttons):
+            if i+1==self.app.current_level and b.enabled:
+                pygame.draw.rect(screen,(255,200,90),b.rect.inflate(8,7),2,border_radius=10)
+            b.draw(screen)
         self.back_button.draw(screen)
-        draw_text(screen,"WIN TO UNLOCK THE NEXT LEVEL  •  EACH LEVEL MAKES THE CPU STRONGER",
-                  (w//2,int(h*.80)),19,config.COLOR_TEXT_DIM)
+        draw_text(screen,"CLEAR A LEVEL TO UNLOCK THE NEXT • CPU DIFFICULTY INCREASES EACH ROUND",
+                  (w//2,int(h*.80)),max(14,int(h*.024)),config.COLOR_GOLD)
 
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
@@ -153,13 +156,19 @@ class LevelSelectState(BaseState):
 
 class HowToState(BaseState):
     def draw(self,screen):
-        screen.fill(config.COLOR_BG); w,h=screen.get_size()
-        draw_text(screen,"HOW TO PLAY",(w//2,int(h*.18)),58,config.COLOR_GOLD,True)
-        lines=["Move your paddle with W A S D.","Keep the puck away from your goal and shoot into the CPU goal.",
-               f"First player to {self.app.settings.win_score} goals wins.","Choose a difficulty from the main menu or Settings.",
-               "Press ESC during a match to pause."]
-        for i,line in enumerate(lines): draw_text(screen,line,(w//2,int(h*(.34+i*.085))),27)
-        draw_text(screen,"ESC  •  BACK",(w//2,int(h*.86)),24,config.COLOR_P1)
+        w,h=screen.get_size()
+        draw_arcade_background(screen,self.app.game_time,"HOW TO PLAY","QUICK START • MASTER THE TABLE")
+        panel=(int(w*.16),int(h*.29),int(w*.68),int(h*.48))
+        draw_arcade_panel(screen,panel,config.COLOR_P1,225)
+        lines=["01   MOVE YOUR PADDLE  •  W A S D",
+               "02   DEFEND YOUR GOAL AND ATTACK THE CPU",
+               f"03   FIRST TO {self.app.settings.win_score} GOALS WINS THE MATCH",
+               "04   WIN TO UNLOCK THE NEXT CAMPAIGN LEVEL",
+               "05   PRESS ESC OR P TO PAUSE THE MATCH"]
+        for i,line in enumerate(lines):
+            draw_text(screen,line,(w//2,int(h*(.37+i*.078))),max(18,int(h*.032)),
+                      config.COLOR_GOLD if i==3 else config.COLOR_TEXT,i==3)
+        draw_text(screen,"ESC  •  BACK",(w//2,int(h*.86)),22,config.COLOR_P1)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN and event.key in (pygame.K_ESCAPE,pygame.K_RETURN,pygame.K_SPACE): self.manager.change("MENU")
 
@@ -186,9 +195,13 @@ class PauseState(BaseState):
         mouse=pygame.mouse.get_pos()
         for i,b in enumerate(self.buttons): b.update(dt,mouse,i==self.index)
     def draw(self,screen):
-        self.app.draw_match(screen); shade=pygame.Surface(screen.get_size(),pygame.SRCALPHA)
-        shade.fill((0,0,0,185)); screen.blit(shade,(0,0))
-        w,h=screen.get_size(); draw_text(screen,"PAUSED",(w//2,int(h*.27)),62,config.COLOR_GOLD,True)
+        self.app.draw_match(screen); w,h=screen.get_size()
+        shade=pygame.Surface((w,h),pygame.SRCALPHA); shade.fill((2,5,13,205)); screen.blit(shade,(0,0))
+        panel=(w//2-205,int(h*.20),410,int(h*.62))
+        draw_arcade_panel(screen,panel,config.COLOR_GOLD,235)
+        draw_text(screen,"MATCH PAUSED",(w//2,int(h*.29)),58,config.COLOR_GOLD,True)
+        draw_text(screen,f"LEVEL {self.app.match.level:02d}  •  SCORE {self.app.match.players[0].score} - {self.app.match.players[1].score}",
+                  (w//2,int(h*.37)),22,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
@@ -245,16 +258,20 @@ class SettingsState(BaseState):
         mouse=pygame.mouse.get_pos()
         for b in self.key_buttons+self.buttons: b.update(dt,mouse)
     def draw(self,screen):
-        screen.fill(config.COLOR_BG); w,h=screen.get_size()
-        draw_text(screen,"SETTINGS",(w//2,65),54,config.COLOR_GOLD,True)
-        draw_text(screen,"AUDIO",(330,120),25,config.COLOR_P1)
-        draw_text(screen,"VIDEO & GAMEPLAY",(755,120),25,config.COLOR_P1)
-        draw_text(screen,"KEY BINDINGS • CLICK AN ACTION, THEN PRESS A KEY",(360,390),18,config.COLOR_TEXT_DIM)
+        w,h=screen.get_size()
+        draw_arcade_background(screen,self.app.game_time,"SYSTEM SETTINGS","TUNE YOUR ARCADE EXPERIENCE")
+        draw_arcade_panel(screen,(int(w*.07),int(h*.20),int(w*.40),int(h*.64)),config.COLOR_P1,220)
+        draw_arcade_panel(screen,(int(w*.53),int(h*.20),int(w*.40),int(h*.64)),config.COLOR_P2,220)
+        draw_text(screen,"AUDIO & CONTROLS",(int(w*.27),int(h*.25)),24,config.COLOR_P1,True)
+        draw_text(screen,"VIDEO & GAMEPLAY",(int(w*.73),int(h*.25)),24,config.COLOR_P2,True)
+        draw_text(screen,"KEY BINDINGS • SELECT AN ACTION, THEN PRESS A KEY",
+                  (int(w*.28),int(h*.55)),17,config.COLOR_TEXT_DIM)
         for item in self.controls: item.draw(screen)
         for b in self.key_buttons+self.buttons: b.draw(screen)
         if self.awaiting_key:
-            prompt = self.key_error or f"PRESS A KEY FOR {self.awaiting_key.upper()} • ESC TO CANCEL"
-            draw_text(screen,prompt,(w//2,h-35),22,config.COLOR_P2_LIGHT if self.key_error else config.COLOR_GOLD)
+            prompt=self.key_error or f"PRESS A KEY FOR {self.awaiting_key.upper()} • ESC TO CANCEL"
+            draw_text(screen,prompt,(w//2,int(h*.95)),20,
+                      config.COLOR_P2_LIGHT if self.key_error else config.COLOR_GOLD)
     def handle_event(self,event):
         if self.awaiting_key and event.type==pygame.KEYDOWN:
             if event.key==pygame.K_ESCAPE: self.awaiting_key=None; self.key_error=None; return
@@ -315,15 +332,21 @@ class EndState(BaseState):
         self.match.effects.update(dt); mouse=pygame.mouse.get_pos()
         for i,b in enumerate(self.buttons): b.update(dt,mouse,i==self.index)
     def draw(self,screen):
-        self.app.draw_match(screen); shade=pygame.Surface(screen.get_size(),pygame.SRCALPHA)
-        shade.fill((0,0,0,205)); screen.blit(shade,(0,0)); w,h=screen.get_size()
-        draw_text(screen,"VICTORY!" if self.victory else "GAME OVER",(w//2,int(h*.16)),64,config.COLOR_GOLD if self.victory else config.COLOR_P2_LIGHT,True)
-        draw_text(screen,f"PLAYER {self.match.players[0].score}  —  CPU {self.match.players[1].score}",(w//2,int(h*.29)),32)
-        draw_text(screen,f"TIME PLAYED  {self.app._format_time(self.match.match_time)}",(w//2,int(h*.37)),25)
-        draw_text(screen,f"LEVEL  {self.match.level} / 30",(w//2,int(h*.43)),25,config.COLOR_GOLD)
-        draw_text(screen,f"GOALS SCORED  {self.match.players[0].score}",(w//2,int(h*.49)),24)
-        status = "LEVEL 30 MASTERED!" if self.victory and self.match.level >= 30 else (f"LEVEL {self.match.level + 1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
-        draw_text(screen,status,(w//2,int(h*.55)),21,config.COLOR_TEXT_DIM)
+        self.app.draw_match(screen); w,h=screen.get_size()
+        shade=pygame.Surface((w,h),pygame.SRCALPHA); shade.fill((2,5,13,218)); screen.blit(shade,(0,0))
+        panel=(w//2-int(w*.25),int(h*.09),int(w*.50),int(h*.84))
+        draw_arcade_panel(screen,panel,config.COLOR_GOLD if self.victory else config.COLOR_P2,240)
+        heading="ROUND CLEARED!" if self.victory else "MATCH OVER"
+        draw_text(screen,heading,(w//2,int(h*.17)),max(38,int(h*.075)),
+                  config.COLOR_GOLD if self.victory else config.COLOR_P2_LIGHT,True)
+        draw_text(screen,f"PLAYER {self.match.players[0].score}  —  CPU {self.match.players[1].score}",
+                  (w//2,int(h*.29)),32)
+        draw_text(screen,f"TIME  {self.app._format_time(self.match.match_time)}",
+                  (w//2,int(h*.37)),23,config.COLOR_TEXT_DIM)
+        draw_text(screen,f"CAMPAIGN LEVEL  {self.match.level:02d} / 30",
+                  (w//2,int(h*.44)),26,config.COLOR_GOLD,True)
+        status="LEVEL 30 MASTERED!" if self.victory and self.match.level>=30 else (f"LEVEL {self.match.level+1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
+        draw_text(screen,status,(w//2,int(h*.53)),23,config.COLOR_TEXT)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
