@@ -52,7 +52,7 @@ class TableHockeyApp:
     def _build_match(self):
         self.layout = Layout(*self.screen.get_size())
         self.match = Match(self.layout, self.settings, self.audio)
-        self.renderer = TableRenderer(self.layout, self.settings.quality)
+        self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
         self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
 
     @property
