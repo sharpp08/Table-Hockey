@@ -55,7 +55,7 @@ class AnimatedButton:
         progress = self.hover_progress
         base = tuple(max(0, int(c * (1.15 + 0.25 * progress))) for c in config.COLOR_BG_LIGHT)
         UI.rounded_panel(surface, rect, base, 235, radius=12,
-                         border=self.color if progress > 0.35 else edge_color)
+                         border=self.color if progress > 0.35 else config.COLOR_TABLE_EDGE)
         text = self.font.render(self.label, True, config.COLOR_TEXT)
         text_bg = pygame.Surface((text.get_width() + 10, text.get_height()), pygame.SRCALPHA)
         text_bg.blit(text, (5, 0))
