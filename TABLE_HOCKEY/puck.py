@@ -88,14 +88,6 @@ class Puck:
                                      max(1, int(radius * (0.18 if index else 0.28))))
             surface.blit(streak_layer, (0, 0))
 
-        if quality.get("glow", False):
-            glow_r = radius * 3
-            glow = pygame.Surface((glow_r * 2 + 2, glow_r * 2 + 2), pygame.SRCALPHA)
-            gc = (glow_r + 1, glow_r + 1)
-            for rr, alpha in ((radius * 3, 10), (radius * 2, 22), (radius + 6, 45)):
-                pygame.draw.circle(glow, (*config.COLOR_PUCK, alpha), gc, rr)
-            surface.blit(glow, (center[0] - gc[0], center[1] - gc[1]))
-
         pygame.draw.circle(surface, (3, 5, 10), (center[0] + 3, center[1] + 4), radius + 2)
         pygame.draw.circle(surface, (155, 170, 195), center, radius + 2)
         pygame.draw.circle(surface, config.COLOR_PUCK, center, radius)
