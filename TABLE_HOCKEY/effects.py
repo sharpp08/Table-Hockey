@@ -65,37 +65,57 @@ class EffectsManager:
         self.celebrating = False
 
     def impact(self, position, normal, color, strength=1.0):
-        self.flash = max(self.flash, min(0.22, 0.065 + strength * 0.075))
+        strength = config.clamp(float(strength), 0.35, 1.8)
+        self.flash = max(self.flash, min(0.20, 0.055 + strength * 0.065))
         self.flash_color = color
         budget = self.quality.get("particles", 0)
+        origin = pygame.Vector2(position)
+        normal = pygame.Vector2(normal)
+        base_angle = math.atan2(normal.y, normal.x)
+
         if budget:
-            count = max(3, min(12, int(5 + strength * 4)))
-            origin = pygame.Vector2(position)
-            normal = pygame.Vector2(normal)
-            base_angle = math.atan2(normal.y, normal.x)
+            # A dense directional spray makes every paddle strike read clearly.
+            count = max(6, min(18, int(8 + strength * 6)))
             for _ in range(count):
-                angle = base_angle + self.rng.uniform(-1.05, 1.05)
-                speed = self.rng.uniform(80, 250) * (0.65 + strength * 0.35)
-                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * speed
-                life = self.rng.uniform(0.20, 0.48)
-                self.particles.append(Particle(
-                    origin.copy(), velocity, color, life, life,
-                    self.rng.uniform(2.0, 5.5),
-                ))
-            # Sharp comic-book impact cuts mixed into the particle burst.
-            for _ in range(max(2, count // 3)):
                 angle = base_angle + self.rng.uniform(-1.35, 1.35)
-                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * self.rng.uniform(150, 340)
-                life = self.rng.uniform(0.12, 0.24)
+                speed = self.rng.uniform(105, 330) * (0.65 + strength * 0.35)
+                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * speed
+                life = self.rng.uniform(0.22, 0.52)
+                tint = color if self.rng.random() < 0.72 else config.COLOR_WHITE
+                self.particles.append(Particle(
+                    origin.copy(), velocity, tint, life, life,
+                    self.rng.uniform(2.2, 6.0),
+                ))
+
+            # Manga impact slashes fan out from the contact point.
+            for _ in range(max(4, count // 2)):
+                angle = base_angle + self.rng.uniform(-1.65, 1.65)
+                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * self.rng.uniform(190, 410)
+                life = self.rng.uniform(0.14, 0.29)
                 self.particles.append(Particle(
                     origin.copy(), velocity, config.COLOR_WHITE, life, life,
-                    self.rng.uniform(8.0, 16.0), shape="slash",
-                    rotation=math.degrees(angle), spin=self.rng.uniform(-90, 90),
+                    self.rng.uniform(10.0, 20.0), shape="slash",
+                    rotation=math.degrees(angle), spin=self.rng.uniform(-130, 130),
                 ))
+
+            # A few bright cross-direction sparks add a sharp arcade hit accent.
+            for _ in range(max(3, count // 3)):
+                angle = base_angle + self.rng.choice((-1, 1)) * self.rng.uniform(0.8, 2.3)
+                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * self.rng.uniform(120, 290)
+                life = self.rng.uniform(0.16, 0.34)
+                self.particles.append(Particle(
+                    origin.copy(), velocity, color, life, life,
+                    self.rng.uniform(3.0, 5.5),
+                ))
+
+        # Two expanding rings create a layered, smoothly fading impact pulse.
         self.waves.append(Shockwave(
-            pygame.Vector2(position), color, 0.28, 0.28, 42 + 25 * strength
+            origin.copy(), config.COLOR_WHITE, 0.20, 0.20, 24 + 13 * strength
         ))
-        self.shake = max(self.shake, min(8.0, 2.0 + strength * 3.0))
+        self.waves.append(Shockwave(
+            origin.copy(), color, 0.36, 0.36, 58 + 34 * strength
+        ))
+        self.shake = max(self.shake, min(7.0, 1.8 + strength * 2.7))
 
     def goal(self, position, color):
         self.flash = 0.72
