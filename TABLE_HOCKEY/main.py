@@ -135,22 +135,72 @@ class TableHockeyApp:
         target.blit(view, shake)
 
     def _draw_hud(self, surface):
-        font = pygame.font.Font(None, max(34, int(surface.get_width() * 0.05)))
-        w = surface.get_width()
-        score1 = font.render(str(self.match.players[0].score), True, config.COLOR_P1)
-        score2 = font.render(str(self.match.players[1].score), True, config.COLOR_P2)
-        surface.blit(score1, (w // 2 - 100, 20))
-        surface.blit(score2, (w // 2 + 65, 20))
-        small = pygame.font.Font(None, 25)
-        label = small.render(f"LEVEL {self.match.level}/30  •  FIRST TO {self.settings.win_score}", True, config.COLOR_TEXT_DIM)
-        surface.blit(label, label.get_rect(midtop=(w // 2, 82)))
+        """Anime sports-broadcast HUD with team plates and campaign progress."""
+        w, h = surface.get_size()
+        cx = w // 2
+        plate_w = max(132, min(190, int(w * 0.16)))
+        plate_h = max(54, int(h * 0.085))
+        top = max(12, int(h * 0.018))
+        gap = max(12, int(w * 0.018))
+        left_rect = pygame.Rect(cx - gap // 2 - plate_w, top, plate_w, plate_h)
+        right_rect = pygame.Rect(cx + gap // 2, top, plate_w, plate_h)
+
+        def team_plate(rect, accent, label, score, align_right=False):
+            panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+            pygame.draw.rect(panel, (5, 10, 22, 205), panel.get_rect(), border_radius=10)
+            pygame.draw.rect(panel, (*accent, 215), panel.get_rect(), 2, border_radius=10)
+            bar_x = rect.w - 5 if align_right else 3
+            pygame.draw.rect(panel, (*accent, 235),
+                             (bar_x, 8, 2, rect.h - 16), border_radius=1)
+            surface.blit(panel, rect.topleft)
+            label_font = pygame.font.Font(None, max(16, int(plate_h * 0.27)))
+            score_font = pygame.font.Font(None, max(34, int(plate_h * 0.70)))
+            label_image = label_font.render(label, True, accent)
+            score_image = score_font.render(str(score), True, config.COLOR_WHITE)
+            label_x = rect.right - 12 if align_right else rect.left + 12
+            label_anchor = label_image.get_rect(
+                midright=(label_x, rect.top + int(plate_h * 0.28))
+            ) if align_right else label_image.get_rect(
+                midleft=(label_x, rect.top + int(plate_h * 0.28))
+            )
+            score_anchor = score_image.get_rect(
+                midright=(rect.right - 13, rect.bottom - 8)
+            ) if align_right else score_image.get_rect(
+                midleft=(rect.left + 13, rect.bottom - 8)
+            )
+            surface.blit(label_image, label_anchor)
+            shadow = score_font.render(str(score), True, (*accent,))
+            surface.blit(shadow, score_anchor.move(2, 2))
+            surface.blit(score_image, score_anchor)
+
+        team_plate(left_rect, config.COLOR_P1, "PLAYER", self.match.players[0].score)
+        team_plate(right_rect, config.COLOR_P2, "CPU", self.match.players[1].score, True)
+
+        level_font = pygame.font.Font(None, max(18, int(h * 0.032)))
+        level_text = level_font.render(
+            f"LEVEL {self.match.level:02d} / 30", True, config.COLOR_GOLD
+        )
+        surface.blit(level_text, level_text.get_rect(midtop=(cx, top + plate_h + 7)))
+        bar_w = max(100, int(w * 0.13))
+        bar_y = top + plate_h + 31
+        bar = pygame.Rect(cx - bar_w // 2, bar_y, bar_w, 4)
+        pygame.draw.rect(surface, (32, 43, 62), bar, border_radius=2)
+        progress = pygame.Rect(bar.x, bar.y, int(bar.w * self.match.level / 30), bar.h)
+        pygame.draw.rect(surface, config.COLOR_GOLD, progress, border_radius=2)
+
         if self.settings.get("show_match_timer", False):
+            small = pygame.font.Font(None, 22)
             timer = small.render(self._format_time(self.match.match_time), True, config.COLOR_TEXT)
-            surface.blit(timer, timer.get_rect(midtop=(w // 2, 108)))
+            surface.blit(timer, timer.get_rect(midtop=(cx, bar_y + 9)))
+
         if self.match.state == "COUNTDOWN":
             whole = max(1, int(config.COUNTDOWN_SECONDS - self.match.countdown + 0.5))
-            count = pygame.font.Font(None, 150).render(str(whole), True, config.COLOR_GOLD)
-            surface.blit(count, count.get_rect(center=(w // 2, surface.get_height() // 2)))
+            count_font = pygame.font.Font(None, 150)
+            count = count_font.render(str(whole), True, config.COLOR_GOLD)
+            outline = count_font.render(str(whole), True, config.COLOR_P1)
+            rect = count.get_rect(center=(cx, h // 2))
+            surface.blit(outline, rect.move(4, 4))
+            surface.blit(count, rect)
 
     @staticmethod
     def _format_time(seconds):
