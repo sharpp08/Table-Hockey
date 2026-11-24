@@ -57,10 +57,10 @@ class Match:
         """Scale CPU reaction, speed and accuracy gradually across 30 levels."""
         progress = (self.level - 1) / 29.0
         preset = dict(base_preset)
-        preset["max_speed"] = float(preset["max_speed"]) * (1.0 + 0.35 * progress)
-        preset["reaction"] = max(0.025, float(preset["reaction"]) * (1.0 - 0.45 * progress))
-        preset["aim_error"] = max(0.15, float(preset["aim_error"]) * (1.0 - 0.80 * progress))
-        preset["aggression"] = min(0.96, float(preset["aggression"]) + 0.18 * progress)
+        preset["max_speed"] = float(preset["max_speed"]) * (1.0 + 0.70 * progress)
+        preset["reaction"] = max(0.025, float(preset["reaction"]) * (1.0 - 0.65 * progress))
+        preset["aim_error"] = max(0.10, float(preset["aim_error"]) * (1.0 - 0.90 * progress))
+        preset["aggression"] = min(0.99, float(preset["aggression"]) + 0.23 * progress)
         return preset
 
     def configure_settings(self, settings):
