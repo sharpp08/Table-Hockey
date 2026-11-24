@@ -141,13 +141,14 @@ class SettingsState(BaseState):
         self.controls += [
             Selector(rect(630,465,250,42),"RESOLUTION",[f"{x}x{y}" for x,y in config.RESOLUTIONS],f"{self.app.settings.resolution[0]}x{self.app.settings.resolution[1]}",self._resolution),
             Selector(rect(630,525,250,42),"FPS CAP",["30","60","120","UNLIMITED"],str(self.app.settings.get("fps_cap",60)) if self.app.settings.get("fps_cap",60) else "UNLIMITED",self._fps),
-            Selector(rect(630,575,250,36),"GRAPHICS",["LOW","MEDIUM","HIGH"],self.app.settings.get("graphics_quality","HIGH"),lambda v:self._set("graphics_quality",v))]
+            Selector(rect(630,575,250,36),"GRAPHICS",["LOW","MEDIUM","HIGH"],self.app.settings.get("graphics_quality","HIGH"),lambda v:self._set("graphics_quality",v)),
+            Selector(rect(630,615,250,32),"TABLE THEME",["NEON","CYBER","SUNSET"],self.app.settings.get("table_theme","NEON"),lambda v:self._set("table_theme",v))]
         binds=self.app.settings.get("keybindings",{})
         defaults={"up":"w","left":"a","down":"s","right":"d"}
         for i,action in enumerate(("up","left","down","right")):
             key=binds.get(action,defaults[action])
             self.key_buttons.append(Button(rect(175,425+i*45,190,36),f"{action.upper()}: {str(key).upper()}",lambda a=action:self._capture(a),config.COLOR_GOLD))
-        self.buttons=[Button(rect(405,620,180,48),"APPLY",self.apply),Button(rect(610,620,180,48),"BACK / CANCEL",self.cancel,config.COLOR_P2),Button(rect(815,620,205,48),"RESET DEFAULTS",self.reset,config.COLOR_GOLD)]
+        self.buttons=[Button(rect(405,660,180,42),"APPLY",self.apply),Button(rect(610,660,180,42),"BACK / CANCEL",self.cancel,config.COLOR_P2),Button(rect(815,660,205,42),"RESET DEFAULTS",self.reset,config.COLOR_GOLD)]
     def _resolution(self,value):
         x,y=value.split("x"); self._set("resolution",(int(x),int(y)))
     def _fps(self,value): self._set("fps_cap",0 if value=="UNLIMITED" else int(value))
