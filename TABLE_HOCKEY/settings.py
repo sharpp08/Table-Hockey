@@ -75,6 +75,9 @@ class SettingsStore:
         d["graphics_quality"] = str(d.get("graphics_quality", "HIGH")).upper()
         if d["graphics_quality"] not in QUALITY_FLAGS:
             d["graphics_quality"] = "HIGH"
+        d["table_theme"] = str(d.get("table_theme", "NEON")).upper()
+        if d["table_theme"] not in ("NEON", "CYBER", "SUNSET"):
+            d["table_theme"] = "NEON"
         d["show_match_timer"] = bool(d.get("show_match_timer", False))
         d["show_fps"] = bool(d.get("show_fps", True))
         d["screen_shake"] = bool(d.get("screen_shake", True))
