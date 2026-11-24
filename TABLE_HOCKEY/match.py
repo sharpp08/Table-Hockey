@@ -15,7 +15,7 @@ from player import Player, HumanController, P2_CONTROLLER
 
 
 class Match:
-    def __init__(self, layout, settings, audio=None, level=1):
+    def __init__(self, layout, settings, audio=None, level=1, player_skin_id=0):
         self.layout = layout
         self.level = max(1, min(30, int(level)))
         self.settings = settings
@@ -32,6 +32,7 @@ class Match:
             Paddle(-1, layout.paddle_start(-1), layout.paddle_r, config.COLOR_P1),
             Paddle(+1, layout.paddle_start(+1), layout.paddle_r, config.COLOR_P2),
         ]
+        self.paddles[0].skin_id = max(0, min(30, int(player_skin_id)))
         self.puck = Puck(layout.puck_start(1), layout.puck_r)
         self.physics = PhysicsEngine(layout, self.puck_speed_scale)
         self.ai = AIController(self._level_ai_preset(settings.ai_preset), random.Random())
