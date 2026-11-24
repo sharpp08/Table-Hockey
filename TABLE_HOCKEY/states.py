@@ -48,12 +48,10 @@ class MenuState(BaseState):
     def draw(self,screen):
         w,h=screen.get_size()
         draw_arcade_background(screen,self.time,"TABLE HOCKEY",
-            f"ARCADE AIR HOCKEY  •  CAMPAIGN LEVEL {self.app.current_level:02d} / 30")
+            f"ARCADE AIR HOCKEY  •  CPU SKILL RISES WITH EVERY LEVEL  •  {self.app.current_level:02d}/30")
         panel=(w//2-int(w*.19),int(h*.32),int(w*.38),int(h*.43))
         draw_arcade_panel(screen,panel,config.COLOR_P1,230)
         for b in self.buttons: b.draw(screen)
-        draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",
-                  (w//2,int(h*.82)),max(20,int(h*.036)),config.COLOR_GOLD,True)
         draw_text(screen,"W / S OR ARROWS  •  ENTER TO SELECT  •  MOUSE TO NAVIGATE",
                   (w//2,int(h*.92)),max(14,int(h*.025)),config.COLOR_TEXT_DIM)
     def handle_event(self,event):
@@ -62,11 +60,6 @@ class MenuState(BaseState):
             elif event.key in (pygame.K_UP,pygame.K_w): self.index=(self.index-1)%len(self.buttons)
             elif event.key in (pygame.K_RETURN,pygame.K_SPACE): self.buttons[self.index].callback()
             elif event.key==pygame.K_ESCAPE: self.app.running=False
-            elif event.key in (pygame.K_LEFT,pygame.K_RIGHT):
-                names=list(config.DIFFICULTY); cur=self.app.settings.get("ai_difficulty","NORMAL")
-                idx=names.index(cur) if cur in names else 1
-                self.app.settings.set("ai_difficulty",names[(idx+(1 if event.key==pygame.K_RIGHT else -1))%len(names)])
-                self.app.settings.save()
         elif event.type==pygame.MOUSEBUTTONDOWN:
             for b in self.buttons:
                 if b.handle_event(event): self.app.audio.play("click"); break
@@ -164,7 +157,7 @@ class HowToState(BaseState):
         lines=["01   MOVE YOUR PADDLE  •  W A S D",
                "02   DEFEND YOUR GOAL AND ATTACK THE CPU",
                f"03   FIRST TO {self.app.settings.win_score} GOALS WINS THE MATCH",
-               "04   WIN TO UNLOCK THE NEXT CAMPAIGN LEVEL",
+               "04   CPU GETS SMARTER WITH EVERY CAMPAIGN LEVEL",
                "05   PRESS ESC OR P TO PAUSE THE MATCH"]
         for i,line in enumerate(lines):
             draw_text(screen,line,(w//2,int(h*(.37+i*.078))),max(18,int(h*.032)),
@@ -230,8 +223,6 @@ class SettingsState(BaseState):
             Toggle(rect(740,275,56,28),"SCREEN SHAKE",self.app.settings.get("screen_shake",True),lambda v:self._set("screen_shake",v)),
             Toggle(rect(740,330,56,28),"MUSIC ENABLED",self.app.settings.get("music_enabled",True),lambda v:self._set("music_enabled",v)),
         ]
-        if self.return_to=="MENU":
-            self.controls.append(Selector(rect(630,405,250,42),"DIFFICULTY",list(config.DIFFICULTY),self.app.settings.get("ai_difficulty","NORMAL"),lambda v:self._set("ai_difficulty",v)))
         self.controls += [
             Selector(rect(630,465,250,42),"RESOLUTION",[f"{x}x{y}" for x,y in config.RESOLUTIONS],f"{self.app.settings.resolution[0]}x{self.app.settings.resolution[1]}",self._resolution),
             Selector(rect(630,525,250,42),"FPS CAP",["30","60","120","UNLIMITED"],str(self.app.settings.get("fps_cap",60)) if self.app.settings.get("fps_cap",60) else "UNLIMITED",self._fps),
