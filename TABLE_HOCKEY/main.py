@@ -36,9 +36,9 @@ class TableHockeyApp:
         self.game_time = 0.0
         self.show_fps = bool(self.settings.get("show_fps", True))
         self.states = StateManager(self)
-        self.fps_font = self._font(22)
         self._font_cache = {}
         self._hud_panel_cache = {}
+        self.fps_font = self._font(22)
 
     def _apply_video(self):
         flags = pygame.FULLSCREEN if self.settings.fullscreen else 0
