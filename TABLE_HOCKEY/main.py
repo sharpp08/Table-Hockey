@@ -14,6 +14,7 @@ from match import Match
 from settings import Layout, SettingsStore
 from ui import TableRenderer
 from states import StateManager
+from skins import get_skin
 
 
 class TableHockeyApp:
@@ -26,6 +27,7 @@ class TableHockeyApp:
         self._apply_audio()
         self.audio.start_music()
         self.current_level = self._load_current_level()
+        self.player_skin_id = self._load_player_skin()
         self._build_match()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -60,9 +62,19 @@ class TableHockeyApp:
         except (OSError, ValueError, TypeError, AttributeError):
             return 1
 
+    def _load_player_skin(self):
+        path = os.path.join(_THIS_DIR, "save", "high_scores.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return max(0, min(30, int(data.get("equipped_skin", 0)))) if isinstance(data, dict) else 0
+        except (OSError, ValueError, TypeError, AttributeError):
+            return 0
+
     def _build_match(self):
         self.layout = Layout(*self.screen.get_size())
-        self.match = Match(self.layout, self.settings, self.audio, level=self.current_level)
+        self.match = Match(self.layout, self.settings, self.audio, level=self.current_level,
+                           player_skin_id=self.player_skin_id)
         self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
         self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
 
