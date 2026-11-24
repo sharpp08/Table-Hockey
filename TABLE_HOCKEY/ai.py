@@ -87,12 +87,28 @@ class AIController:
         in_cpu_half = puck.pos.x > cx
 
         if in_cpu_half:
-            # Approach from behind the puck and choose a changing shot lane.
-            approach = config.clamp((puck.pos.x - cx) / (w * 0.48), 0.0, 1.0)
-            lead_x = config.lerp(puck.pos.x + paddle.radius * 1.7,
-                                 puck.pos.x + paddle.radius * 0.85, aggression)
-            read_x = config.clamp(lead_x, cx + puck.radius, layout.p2_max_x)
-            predicted_y, travel = self._predict(puck, read_x, layout)
+            # Intercept the puck's future position instead of chasing its
+            # current coordinates. Estimate how long the paddle needs to reach
+            # the strike zone, then account for puck motion and rail bounces.
+            max_ai_speed = max(1.0, self.preset["max_speed"] * layout.scale)
+            approach_distance = paddle.pos.distance_to(puck.pos)
+            intercept_time = config.clamp(
+                approach_distance / max_ai_speed * 0.72,
+                0.035,
+                0.34,
+            )
+            future_x = puck.pos.x + puck.velocity.x * intercept_time
+            future_y = puck.pos.y + puck.velocity.y * intercept_time
+            right_limit = layout.inner_x + layout.inner_w - puck.radius
+            if future_x > right_limit:
+                future_x = right_limit - (future_x - right_limit)
+            future_x = config.clamp(future_x, cx + puck.radius, right_limit)
+            low_rail = layout.inner_y + puck.radius
+            high_rail = layout.inner_y + layout.inner_h - puck.radius
+            predicted_puck = pygame.Vector2(
+                future_x,
+                self._fold(future_y, low_rail, high_rail),
+            )
 
             # Aim toward the part of the opponent goal least aligned with puck motion.
             goal_low = cy - h * 0.17
@@ -107,7 +123,6 @@ class AIController:
             # Build the strike from the puck's predicted contact position.
             # The target must overlap the puck's collision radius slightly;
             # stopping outside that radius makes the CPU look like it is only following.
-            predicted_puck = pygame.Vector2(read_x, predicted_y)
             shot = pygame.Vector2(layout.p1_goal_x - predicted_puck.x,
                                   desired_goal_y - predicted_puck.y)
             if shot.length_squared() > 1.0:
