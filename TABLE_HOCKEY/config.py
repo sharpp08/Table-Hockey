@@ -60,16 +60,16 @@ PADDLE_R = 0.046       # paddle radius
 PUCK_R   = 0.022       # puck radius
 
 # Physics tuning (per-second values)
-PUCK_ACCEL   = 2350.0  # extra velocity applied on a paddle hit (px/s at base)
-PUCK_FRICTION = 0.78   # exponential friction factor per second
-PUCK_MIN_SPEED = 165.0 # px/s at base resolution
-PUCK_MAX_SPEED = 1450.0
-PADDLE_SPEED   = 565.0 # px/s at base resolution
+PUCK_ACCEL   = 2850.0  # extra velocity applied on a paddle hit (px/s at base)
+PUCK_FRICTION = 0.66   # exponential friction factor per second
+PUCK_MIN_SPEED = 190.0 # px/s at base resolution
+PUCK_MAX_SPEED = 1780.0
+PADDLE_SPEED   = 650.0 # px/s at base resolution
 PADDLE_ACCEL_FACTOR = 1.68  # how much paddle velocity boosts the puck
-PADDLE_KICK      = 640.0   # base kick on a paddle hit (px/s at base)
+PADDLE_KICK      = 760.0   # base kick on a paddle hit (px/s at base)
 
-GOAL_CELEBRATION = 1.8    # seconds of the goal animation
-COUNTDOWN_SECONDS = 3     # pre-serve countdown
+GOAL_CELEBRATION = 1.35    # seconds of the goal animation
+COUNTDOWN_SECONDS = 2     # pre-serve countdown
 MATCH_TIMER = False       # show an elapsed timer in the HUD
 
 # Campaign-driven CPU baseline. Level 1 should already feel alert and capable;
