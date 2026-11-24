@@ -127,7 +127,7 @@ class LevelSelectState(BaseState):
                 pygame.draw.rect(screen,(255,200,90),b.rect.inflate(8,7),2,border_radius=10)
             b.draw(screen)
         self.back_button.draw(screen)
-        draw_text(screen,"CLEAR A LEVEL TO UNLOCK THE NEXT • CPU DIFFICULTY INCREASES EACH ROUND",
+        draw_text(screen,"CLEAR A LEVEL TO UNLOCK THE NEXT • CPU GETS SMARTER EVERY LEVEL",
                   (w//2,int(h*.245)),max(13,int(h*.020)),config.COLOR_GOLD)
 
     def handle_event(self,event):
