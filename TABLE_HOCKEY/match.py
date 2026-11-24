@@ -55,16 +55,16 @@ class Match:
 
     # ------------------------------------------------------------------ #
     def _level_ai_preset(self, base_preset=None):
-        """One continuous campaign curve: level 1 is forgiving, level 30 is elite."""
+        """Scale an already aggressive CPU into an elite opponent over 30 levels."""
         progress = (self.level - 1) / 29.0
         curve = progress ** 0.88
         base = dict(base_preset or config.AI_BASE_PRESET)
         return {
-            "max_speed": base["max_speed"] + 285.0 * curve,
-            "reaction": max(0.032, base["reaction"] - 0.105 * curve),
-            "aim_error": max(0.85, base["aim_error"] - 9.15 * curve),
-            "aggression": min(0.88, base["aggression"] + 0.56 * curve),
-            "tracking": 11.0 + 13.0 * curve,
+            "max_speed": base["max_speed"] + 420.0 * curve,
+            "reaction": max(0.025, base["reaction"] - 0.015 * curve),
+            "aim_error": max(0.35, base["aim_error"] - 1.65 * curve),
+            "aggression": min(0.99, base["aggression"] + 0.17 * curve),
+            "tracking": 14.0 + 19.0 * curve,
         }
 
     def configure_settings(self, settings):
