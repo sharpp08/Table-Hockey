@@ -45,6 +45,10 @@ class EffectsManager:
         self.celebration_color = config.COLOR_GOLD
         self.confetti_timer = 0.0
         self.bounds = (1280, 720)
+        # Reuse compositing surfaces instead of allocating full-screen layers every frame.
+        self._layer = None
+        self._flash_layer = None
+        self._layer_size = None
 
     def configure(self, quality, bounds=None):
         self.quality = quality
@@ -201,48 +205,51 @@ class EffectsManager:
                 round(self.rng.uniform(-self.shake, self.shake)))
 
     def draw(self, surface):
-        layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-        for wave in self.waves:
-            progress = 1.0 - wave.life / wave.max_life
-            # Ease outward, then dissolve smoothly instead of popping away.
-            eased = 1.0 - (1.0 - progress) ** 2.4
-            fade = (1.0 - progress) ** 1.35
-            fade *= min(1.0, progress * 8.0)
-            radius = max(1, int(wave.max_radius * eased))
-            alpha = max(0, min(255, int(175 * fade)))
-            pygame.draw.circle(layer, (*wave.color, alpha), wave.pos,
-                               radius, max(1, int(4 * (1.0 - eased * 0.72))))
-        for particle in self.particles:
-            ratio = max(0.0, min(1.0, particle.life / particle.max_life))
-            # Soft envelope: fade in quickly, linger, and fade out at the tail.
-            fade_in = min(1.0, (1.0 - ratio) * 7.0)
-            fade_out = min(1.0, ratio * 2.4)
-            envelope = fade_in * fade_out
-            envelope = envelope * envelope * (3.0 - 2.0 * envelope)
-            alpha = max(0, min(255, int(255 * envelope)))
-            size = max(1, int(particle.size * (0.72 + 0.28 * ratio)))
-            pos = (round(particle.pos.x), round(particle.pos.y))
-            if particle.shape == "rect":
-                rect = pygame.Rect(0, 0, size * 2, size)
-                rect.center = pos
-                pygame.draw.rect(layer, (*particle.color, alpha), rect, border_radius=1)
-            elif particle.shape == "slash":
-                angle = math.radians(particle.rotation)
-                direction = pygame.Vector2(math.cos(angle), math.sin(angle))
-                half = direction * size
-                start = pygame.Vector2(pos) - half
-                end = pygame.Vector2(pos) + half
-                pygame.draw.line(
-                    layer, (*particle.color, alpha),
-                    (round(start.x), round(start.y)),
-                    (round(end.x), round(end.y)),
-                    max(1, int(size * 0.32)),
-                )
-            else:
-                pygame.draw.circle(layer, (*particle.color, alpha), pos, size)
-        surface.blit(layer, (0, 0))
+        size = surface.get_size()
+        if self._layer_size != size:
+            self._layer_size = size
+            self._layer = pygame.Surface(size, pygame.SRCALPHA)
+            self._flash_layer = pygame.Surface(size, pygame.SRCALPHA)
+
+        if self.waves or self.particles:
+            layer = self._layer
+            layer.fill((0, 0, 0, 0))
+            for wave in self.waves:
+                progress = 1.0 - wave.life / wave.max_life
+                eased = 1.0 - (1.0 - progress) ** 2.4
+                fade = (1.0 - progress) ** 1.35
+                fade *= min(1.0, progress * 8.0)
+                radius = max(1, int(wave.max_radius * eased))
+                alpha = max(0, min(255, int(175 * fade)))
+                pygame.draw.circle(layer, (*wave.color, alpha), wave.pos,
+                                   radius, max(1, int(4 * (1.0 - eased * 0.72))))
+            for particle in self.particles:
+                ratio = max(0.0, min(1.0, particle.life / particle.max_life))
+                fade_in = min(1.0, (1.0 - ratio) * 7.0)
+                fade_out = min(1.0, ratio * 2.4)
+                envelope = fade_in * fade_out
+                envelope = envelope * envelope * (3.0 - 2.0 * envelope)
+                alpha = max(0, min(255, int(255 * envelope)))
+                size_px = max(1, int(particle.size * (0.72 + 0.28 * ratio)))
+                pos = (round(particle.pos.x), round(particle.pos.y))
+                if particle.shape == "rect":
+                    rect = pygame.Rect(0, 0, size_px * 2, size_px)
+                    rect.center = pos
+                    pygame.draw.rect(layer, (*particle.color, alpha), rect, border_radius=1)
+                elif particle.shape == "slash":
+                    angle = math.radians(particle.rotation)
+                    dx, dy = math.cos(angle) * size_px, math.sin(angle) * size_px
+                    pygame.draw.line(
+                        layer, (*particle.color, alpha),
+                        (round(pos[0] - dx), round(pos[1] - dy)),
+                        (round(pos[0] + dx), round(pos[1] + dy)),
+                        max(1, int(size_px * 0.32)),
+                    )
+                else:
+                    pygame.draw.circle(layer, (*particle.color, alpha), pos, size_px)
+            surface.blit(layer, (0, 0))
+
         if self.flash > 0:
-            flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             eased_flash = self.flash * self.flash * (3.0 - 2.0 * self.flash)
-            flash.fill((*self.flash_color, int(105 * eased_flash)))
-            surface.blit(flash, (0, 0))
+            self._flash_layer.fill((*self.flash_color, int(105 * eased_flash)))
+            surface.blit(self._flash_layer, (0, 0))
