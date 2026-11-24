@@ -17,7 +17,7 @@ class StateManager:
         self.app=app; self.current_name="MENU"; self.active=MenuState(self)
         self.fade_time=.42; self.fade_elapsed=self.fade_time
     def change(self,name,**kwargs):
-        classes={"MENU":MenuState,"SETTINGS":SettingsState,"HOW_TO":HowToState,
+        classes={"MENU":MenuState,"SETTINGS":SettingsState,"HOW_TO":HowToState,"LEADERBOARD":LeaderboardState,
                  "PLAYING":PlayingState,"PAUSED":PauseState,"GAME_OVER":EndState,"VICTORY":EndState}
         self.current_name=name
         self.active=classes[name](self,**kwargs) if kwargs else classes[name](self)
@@ -37,9 +37,10 @@ class MenuState(BaseState):
         super().__init__(manager); self.time=0.; self.index=0; self._layout()
     def _layout(self):
         w,h=self.app.screen.get_size(); cx=w//2
-        actions=[("START GAME",self.start),("SETTINGS",lambda:self.manager.change("SETTINGS",return_to="MENU")),
+        actions=[("START GAME",self.start),("LEADERBOARD",lambda:self.manager.change("LEADERBOARD")),
+                 ("SETTINGS",lambda:self.manager.change("SETTINGS",return_to="MENU")),
                  ("HOW TO PLAY",lambda:self.manager.change("HOW_TO")),("QUIT",lambda:setattr(self.app,"running",False))]
-        self.buttons=[Button((cx-155,int(h*.43)+i*62,310,48),label,cb) for i,(label,cb) in enumerate(actions)]
+        self.buttons=[Button((cx-155,int(h*.38)+i*55,310,46),label,cb) for i,(label,cb) in enumerate(actions)]
     def start(self): self.app.new_match(); self.manager.change("PLAYING")
     def update(self,dt):
         self.time+=dt; mouse=pygame.mouse.get_pos()
@@ -139,7 +140,8 @@ class SettingsState(BaseState):
             self.controls.append(Selector(rect(630,405,250,42),"DIFFICULTY",list(config.DIFFICULTY),self.app.settings.get("ai_difficulty","NORMAL"),lambda v:self._set("ai_difficulty",v)))
         self.controls += [
             Selector(rect(630,465,250,42),"RESOLUTION",[f"{x}x{y}" for x,y in config.RESOLUTIONS],f"{self.app.settings.resolution[0]}x{self.app.settings.resolution[1]}",self._resolution),
-            Selector(rect(630,525,250,42),"FPS CAP",["30","60","120","UNLIMITED"],str(self.app.settings.get("fps_cap",60)) if self.app.settings.get("fps_cap",60) else "UNLIMITED",self._fps)]
+            Selector(rect(630,525,250,42),"FPS CAP",["30","60","120","UNLIMITED"],str(self.app.settings.get("fps_cap",60)) if self.app.settings.get("fps_cap",60) else "UNLIMITED",self._fps),
+            Selector(rect(630,575,250,36),"GRAPHICS",["LOW","MEDIUM","HIGH"],self.app.settings.get("graphics_quality","HIGH"),lambda v:self._set("graphics_quality",v))]
         binds=self.app.settings.get("keybindings",{})
         defaults={"up":"w","left":"a","down":"s","right":"d"}
         for i,action in enumerate(("up","left","down","right")):
@@ -191,6 +193,38 @@ class SettingsState(BaseState):
             if b.handle_event(event): self.app.audio.play("click"); return
         if event.type==pygame.KEYDOWN and event.key==pygame.K_ESCAPE: self.cancel()
 
+class LeaderboardState(BaseState):
+    """Career summary and recent match results."""
+    def __init__(self, manager):
+        super().__init__(manager)
+        self.back = Button((35, 35, 170, 44), "BACK", lambda: self.manager.change("MENU"), config.COLOR_P2)
+        try:
+            with open(SCORES_PATH, "r", encoding="utf-8") as f: self.data = json.load(f)
+            if not isinstance(self.data, dict): self.data = {}
+        except (OSError, ValueError, TypeError): self.data = {}
+    def update(self, dt): self.back.update(dt, pygame.mouse.get_pos())
+    def draw(self, screen):
+        screen.fill(config.COLOR_BG); w, h = screen.get_size()
+        draw_text(screen, "CAREER LEADERBOARD", (w//2, 75), 48, config.COLOR_GOLD, True)
+        for i, name in enumerate(("EASY", "NORMAL", "HARD", "NIGHTMARE")):
+            rec = self.data.get(name, {}); wins = int(rec.get("wins", 0)); losses = int(rec.get("losses", 0))
+            best = rec.get("best_time"); best_text = f"{float(best):.1f}s" if best is not None else "--"
+            y = 170 + i * 58
+            pygame.draw.rect(screen, config.COLOR_BG_LIGHT, (w//2-330, y-20, 660, 44), border_radius=8)
+            draw_text(screen, name, (w//2-225, y), 22, config.COLOR_P1, True)
+            draw_text(screen, f"W {wins}   L {losses}", (w//2, y), 22)
+            draw_text(screen, f"BEST {best_text}", (w//2+225, y), 22, config.COLOR_GOLD)
+        draw_text(screen, "RECENT MATCHES", (w//2, 445), 25, config.COLOR_P1, True)
+        history = self.data.get("recent_matches", [])
+        if not history: draw_text(screen, "No completed matches yet.", (w//2, 505), 22, config.COLOR_TEXT_DIM)
+        for i, item in enumerate(history[:4]):
+            label = f"{item.get('result','?')} • {item.get('difficulty','NORMAL')} • PLAYER {item.get('player_score',0)} - CPU {item.get('cpu_score',0)} • {float(item.get('duration',0)):.1f}s"
+            draw_text(screen, label, (w//2, 485+i*38), 19, config.COLOR_P1_LIGHT if item.get("result")=="WIN" else config.COLOR_P2_LIGHT)
+        self.back.draw(screen)
+    def handle_event(self, event):
+        if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE): self.manager.change("MENU")
+        self.back.handle_event(event)
+
 class EndState(BaseState):
     def __init__(self,manager):
         super().__init__(manager); self.victory=manager.current_name=="VICTORY"; self.match=self.app.match
@@ -200,26 +234,42 @@ class EndState(BaseState):
                       Button((cx-155,int(h*.85),310,46),"QUIT",lambda:setattr(self.app,"running",False))]
         self.index=0
     def _record(self):
-        os.makedirs(SAVE_DIR,exist_ok=True)
+        """Persist career totals and a short match history."""
+        import datetime
+        os.makedirs(SAVE_DIR, exist_ok=True)
         try:
-            with open(SCORES_PATH,"r",encoding="utf-8") as f: data=json.load(f)
-        except (OSError,ValueError): data={}
-        if not isinstance(data, dict): data={}
-        difficulty=self.app.settings.get("ai_difficulty","NORMAL")
-        record=data.get(difficulty,{"wins":0,"best_time":None})
-        if not isinstance(record, dict): record={"wins":0,"best_time":None}
-        new=False
-        if self.victory:
-            record["wins"]=int(record.get("wins",0))+1
-            try: best=float(record.get("best_time"))
-            except (TypeError,ValueError): best=None
-            if best is None or self.match.match_time<best:
-                record["best_time"]=round(self.match.match_time,2); new=True
-        data[difficulty]=record
+            with open(SCORES_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, ValueError, TypeError):
+            data = {}
+        if not isinstance(data, dict): data = {}
+        difficulty = self.app.settings.get("ai_difficulty", "NORMAL")
+        record = data.get(difficulty, {})
+        if not isinstance(record, dict): record = {}
+        wins, losses = int(record.get("wins", 0) or 0), int(record.get("losses", 0) or 0)
+        matches = int(record.get("matches", wins + losses) or 0)
+        streak = int(record.get("current_streak", 0) or 0)
+        if self.victory: wins += 1; streak = max(0, streak) + 1
+        else: losses += 1; streak = min(0, streak) - 1
+        matches += 1
+        try: best = float(record.get("best_time"))
+        except (TypeError, ValueError): best = None
+        new_best = bool(self.victory and (best is None or self.match.match_time < best))
+        if new_best: best = round(self.match.match_time, 2)
+        record.update({"wins":wins,"losses":losses,"matches":matches,"current_streak":streak,"best_time":best})
+        data[difficulty] = record
+        history = data.get("recent_matches", [])
+        if not isinstance(history, list): history = []
+        history.insert(0, {"date":datetime.datetime.now().isoformat(timespec="seconds"),
+            "difficulty":difficulty,"result":"WIN" if self.victory else "LOSS",
+            "player_score":self.match.players[0].score,"cpu_score":self.match.players[1].score,
+            "duration":round(self.match.match_time,2)})
+        data["recent_matches"] = history[:20]
         try:
-            with open(SCORES_PATH,"w",encoding="utf-8") as f: json.dump(data,f,indent=2)
-        except OSError: pass
-        return new
+            with open(SCORES_PATH, "w", encoding="utf-8") as f: json.dump(data, f, indent=2)
+        except (OSError, TypeError, ValueError) as exc:
+            print("[career] could not save match record:", exc)
+        return new_best
     def again(self): self.app.new_match(); self.manager.change("PLAYING")
     def menu(self): self.app.new_match(); self.manager.change("MENU")
     def update(self,dt):
