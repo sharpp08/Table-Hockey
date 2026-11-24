@@ -65,7 +65,7 @@ class EffectsManager:
         self.celebrating = False
 
     def impact(self, position, normal, color, strength=1.0):
-        self.flash = max(self.flash, min(0.24, 0.07 + strength * 0.07))
+        self.flash = max(self.flash, min(0.22, 0.065 + strength * 0.075))
         self.flash_color = color
         budget = self.quality.get("particles", 0)
         if budget:
@@ -98,7 +98,7 @@ class EffectsManager:
         self.shake = max(self.shake, min(8.0, 2.0 + strength * 3.0))
 
     def goal(self, position, color):
-        self.flash = 1.0
+        self.flash = 0.72
         self.flash_color = color
         self.shake = 13.0
         origin = pygame.Vector2(position)
@@ -144,8 +144,13 @@ class EffectsManager:
 
     def update(self, dt):
         dt = min(max(dt, 0.0), 0.05)
-        self.flash = max(0.0, self.flash - dt * 1.7)
-        self.shake = max(0.0, self.shake - dt * 24.0)
+        # Exponential decay avoids abrupt cut-offs and gives flashes a soft tail.
+        self.flash *= math.exp(-dt * 8.5)
+        if self.flash < 0.006:
+            self.flash = 0.0
+        self.shake *= math.exp(-dt * 9.0)
+        if self.shake < 0.12:
+            self.shake = 0.0
         if self.celebrating:
             self.confetti_timer -= dt
             if self.confetti_timer <= 0:
@@ -179,14 +184,23 @@ class EffectsManager:
         layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         for wave in self.waves:
             progress = 1.0 - wave.life / wave.max_life
-            radius = max(1, int(wave.max_radius * progress))
-            alpha = int(150 * (1.0 - progress) ** 1.4)
+            # Ease outward, then dissolve smoothly instead of popping away.
+            eased = 1.0 - (1.0 - progress) ** 2.4
+            fade = (1.0 - progress) ** 1.35
+            fade *= min(1.0, progress * 8.0)
+            radius = max(1, int(wave.max_radius * eased))
+            alpha = max(0, min(255, int(175 * fade)))
             pygame.draw.circle(layer, (*wave.color, alpha), wave.pos,
-                               radius, max(1, int(4 * (1 - progress))))
+                               radius, max(1, int(4 * (1.0 - eased * 0.72))))
         for particle in self.particles:
-            ratio = particle.life / particle.max_life
-            alpha = max(0, min(255, int(255 * ratio)))
-            size = max(1, int(particle.size * (0.55 + 0.45 * ratio)))
+            ratio = max(0.0, min(1.0, particle.life / particle.max_life))
+            # Soft envelope: fade in quickly, linger, and fade out at the tail.
+            fade_in = min(1.0, (1.0 - ratio) * 7.0)
+            fade_out = min(1.0, ratio * 2.4)
+            envelope = fade_in * fade_out
+            envelope = envelope * envelope * (3.0 - 2.0 * envelope)
+            alpha = max(0, min(255, int(255 * envelope)))
+            size = max(1, int(particle.size * (0.72 + 0.28 * ratio)))
             pos = (round(particle.pos.x), round(particle.pos.y))
             if particle.shape == "rect":
                 rect = pygame.Rect(0, 0, size * 2, size)
@@ -209,5 +223,6 @@ class EffectsManager:
         surface.blit(layer, (0, 0))
         if self.flash > 0:
             flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            flash.fill((*self.flash_color, int(125 * self.flash)))
+            eased_flash = self.flash * self.flash * (3.0 - 2.0 * self.flash)
+            flash.fill((*self.flash_color, int(105 * eased_flash)))
             surface.blit(flash, (0, 0))
