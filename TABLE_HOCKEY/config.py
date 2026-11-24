@@ -104,6 +104,7 @@ DEFAULT_SETTINGS = {
     "keybindings": {"up": "w", "left": "a", "down": "s", "right": "d"},
     "resolution": BASE_RESOLUTION,
     "graphics_quality": "HIGH",  # LOW, MEDIUM, HIGH
+    "table_theme": "NEON",
     "show_match_timer": MATCH_TIMER,
 }
 
