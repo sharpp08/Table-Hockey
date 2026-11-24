@@ -93,21 +93,6 @@ class Paddle:
             max(2, int(radius * 0.13)),
         )
 
-        # Rotating anime-tech glyphs around each paddle; drawn as a small alpha layer.
-        ring_r = radius + max(5, radius // 3)
-        ring_size = ring_r * 2 + 4
-        ring_layer = pygame.Surface((ring_size, ring_size), pygame.SRCALPHA)
-        ring_rect = pygame.Rect(2, 2, ring_size - 4, ring_size - 4)
-        rotation = game_time * (2.2 if self.side < 0 else -1.8)
-        pulse = 0.5 + 0.5 * math.sin(game_time * 3.1 + self.side * 0.7)
-        ring_alpha = int(58 + 102 * pulse)
-        ring_width = max(1, int(radius / 10 * (0.82 + pulse * 0.28)))
-        for segment in range(3):
-            start = rotation + segment * math.tau / 3.0
-            pygame.draw.arc(ring_layer, (*accent, ring_alpha),
-                            ring_rect, start, start + 0.62 + pulse * 0.16, ring_width)
-        surface.blit(ring_layer, (center[0] - ring_size // 2, center[1] - ring_size // 2))
-
         # Movement cuts ease in with speed and taper toward their trailing ends.
         speed = self.velocity.length()
         motion_fade = max(0.0, min(1.0, (speed - 55.0) / 300.0))
