@@ -154,5 +154,28 @@ class TableRenderer:
                          pygame.Rect(int(l.table_x), int(l.table_y), int(l.table_w), int(l.table_h)),
                          4, border_radius=radius)
 
+        # Subtle neon perimeter rails and goal-side light strips.
+        accent_y = int(l.table_y + l.table_h * 0.035)
+        rail_left = int(l.table_x + l.table_w * 0.12)
+        rail_right = int(l.table_x + l.table_w * 0.88)
+        for side, accent in ((-1, config.COLOR_P1), (1, config.COLOR_P2)):
+            x = int(l.center_x + side * l.inner_w * 0.25)
+            pygame.draw.line(self.surface, config.scale_color(accent, 0.48),
+                             (x, int(l.table_y + 8)), (x, int(l.table_y + 15)), 2)
+            pygame.draw.line(self.surface, config.scale_color(accent, 0.48),
+                             (x, int(l.table_y + l.table_h - 15)),
+                             (x, int(l.table_y + l.table_h - 8)), 2)
+        pygame.draw.line(self.surface, config.scale_color(config.COLOR_P1, 0.38),
+                         (rail_left, accent_y), (int(l.center_x - 12), accent_y), 2)
+        pygame.draw.line(self.surface, config.scale_color(config.COLOR_P2, 0.38),
+                         (int(l.center_x + 12), accent_y), (rail_right, accent_y), 2)
+        # Goal-mouth glow accents are clipped to the table surface and cached.
+        glow_layer = pygame.Surface((w, h), pygame.SRCALPHA)
+        for gx, accent in ((l.inner_x, config.COLOR_P1), (l.inner_x + l.inner_w, config.COLOR_P2)):
+            for thickness, alpha in ((12, 12), (7, 24), (3, 48)):
+                pygame.draw.line(glow_layer, (*accent, alpha),
+                                 (int(gx), top), (int(gx), bottom), thickness)
+        self.surface.blit(glow_layer, (0, 0))
+
     def blit(self, surface):
         surface.blit(self.surface, (0, 0))
