@@ -195,40 +195,53 @@ class SettingsState(BaseState):
         if event.type==pygame.KEYDOWN and event.key==pygame.K_ESCAPE: self.cancel()
 
 class LeaderboardState(BaseState):
-    """Career summary and recent match results."""
     def __init__(self, manager):
         super().__init__(manager)
-        self.back = Button((35, 35, 170, 44), "BACK", lambda: self.manager.change("MENU"), config.COLOR_P2)
+        self.page = 0
+        self.back = Button((35, 35, 150, 42), "BACK", lambda: self.manager.change("MENU"), config.COLOR_P2)
+        self.prev = Button((430, 650, 150, 42), "PREVIOUS", lambda: self.change_page(-1), config.COLOR_P1)
+        self.next = Button((700, 650, 150, 42), "NEXT", lambda: self.change_page(1), config.COLOR_P1)
         try:
             with open(SCORES_PATH, "r", encoding="utf-8") as f: self.data = json.load(f)
             if not isinstance(self.data, dict): self.data = {}
         except (OSError, ValueError, TypeError): self.data = {}
-    def update(self, dt): self.back.update(dt, pygame.mouse.get_pos())
+        try: self.current_level = max(1, min(30, int(self.data.get("current_level", 1))))
+        except (ValueError, TypeError): self.current_level = 1
+        self.levels = self.data.get("levels", {})
+        if not isinstance(self.levels, dict): self.levels = {}
+    def change_page(self, amount): self.page = max(0, min(2, self.page + amount))
+    def update(self, dt):
+        mouse = pygame.mouse.get_pos()
+        for b in (self.back, self.prev, self.next): b.update(dt, mouse)
     def draw(self, screen):
         screen.fill(config.COLOR_BG); w, h = screen.get_size()
-        draw_text(screen, "CAREER LEADERBOARD", (w//2, 75), 48, config.COLOR_GOLD, True)
-        for i, name in enumerate(("EASY", "NORMAL", "HARD", "NIGHTMARE")):
-            rec = self.data.get(name, {})
+        draw_text(screen, "LEVEL PROGRESSION", (w//2, 62), 46, config.COLOR_GOLD, True)
+        draw_text(screen, f"CURRENT LEVEL {self.current_level} / 30", (w//2, 112), 27, config.COLOR_P1_LIGHT, True)
+        first = self.page * 10 + 1
+        draw_text(screen, f"LEVELS {first:02d} - {first+9:02d}", (w//2, 153), 21, config.COLOR_TEXT_DIM)
+        for i in range(10):
+            level = first + i
+            rec = self.levels.get(str(level), {})
             if not isinstance(rec, dict): rec = {}
-            wins, losses = int(rec.get("wins", 0) or 0), int(rec.get("losses", 0) or 0)
-            best = rec.get("best_time"); best_text = f"{float(best):.1f}s" if best is not None else "--"
-            y = 170 + i * 58
-            pygame.draw.rect(screen, config.COLOR_BG_LIGHT, (w//2-330, y-20, 660, 44), border_radius=8)
-            draw_text(screen, name, (w//2-225, y), 22, config.COLOR_P1, True)
-            draw_text(screen, f"W {wins}   L {losses}   STREAK {int(rec.get('current_streak',0) or 0):+d}", (w//2, y), 22)
-            draw_text(screen, f"BEST {best_text}", (w//2+225, y), 22, config.COLOR_GOLD)
-        draw_text(screen, "RECENT MATCHES", (w//2, 445), 25, config.COLOR_P1, True)
-        history = self.data.get("recent_matches", [])
-        if not isinstance(history, list): history = []
-        history = [item for item in history if isinstance(item, dict)]
-        if not history: draw_text(screen, "No completed matches yet.", (w//2, 505), 22, config.COLOR_TEXT_DIM)
-        for i, item in enumerate(history[:4]):
-            label = f"{item.get('result','?')} • {item.get('difficulty','NORMAL')} • PLAYER {item.get('player_score',0)} - CPU {item.get('cpu_score',0)} • {float(item.get('duration',0)):.1f}s"
-            draw_text(screen, label, (w//2, 485+i*38), 19, config.COLOR_P1_LIGHT if item.get("result")=="WIN" else config.COLOR_P2_LIGHT)
-        self.back.draw(screen)
+            unlocked = level <= self.current_level
+            completed = bool(rec.get("completed", False))
+            y = 190 + i * 43
+            pygame.draw.rect(screen, config.COLOR_BG_LIGHT if unlocked else (18,20,28),
+                             (w//2-340, y-17, 680, 36), border_radius=7)
+            draw_text(screen, f"LEVEL {level:02d}", (w//2-250, y), 20,
+                      config.COLOR_P1 if unlocked else config.COLOR_TEXT_DIM, True)
+            status = "COMPLETED" if completed else ("CURRENT" if level == self.current_level else ("UNLOCKED" if unlocked else "LOCKED"))
+            draw_text(screen, status, (w//2, y), 18, config.COLOR_GOLD if completed else config.COLOR_P1_LIGHT if unlocked else config.COLOR_TEXT_DIM)
+            draw_text(screen, f"W {int(rec.get('wins',0) or 0)}  L {int(rec.get('losses',0) or 0)}" if unlocked else "---",
+                      (w//2+240, y), 18, config.COLOR_TEXT_DIM)
+        self.back.draw(screen); self.prev.draw(screen); self.next.draw(screen)
+        draw_text(screen, f"PAGE {self.page+1} / 3", (w//2, 672), 17, config.COLOR_TEXT_DIM)
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE): self.manager.change("MENU")
-        self.back.handle_event(event)
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE: self.manager.change("MENU"); return
+            if event.key in (pygame.K_LEFT, pygame.K_a): self.change_page(-1)
+            elif event.key in (pygame.K_RIGHT, pygame.K_d): self.change_page(1)
+        for b in (self.back, self.prev, self.next): b.handle_event(event)
 
 class EndState(BaseState):
     def __init__(self,manager):
