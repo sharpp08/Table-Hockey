@@ -72,13 +72,13 @@ GOAL_CELEBRATION = 1.8    # seconds of the goal animation
 COUNTDOWN_SECONDS = 3     # pre-serve countdown
 MATCH_TIMER = False       # show an elapsed timer in the HUD
 
-# Campaign-driven CPU baseline. Match._level_ai_preset() scales these values
-# smoothly from level 1 through level 30; players never choose a separate difficulty.
+# Campaign-driven CPU baseline. Level 1 should already feel alert and capable;
+# the campaign curve still adds speed, reaction time and precision through level 30.
 AI_BASE_PRESET = {
-    "reaction": 0.14,
-    "max_speed": 560.0,
-    "aim_error": 10.0,
-    "aggression": 0.28,
+    "reaction": 0.09,
+    "max_speed": 680.0,
+    "aim_error": 5.5,
+    "aggression": 0.46,
 }
 
 # Default settings (used when no config file exists yet)
