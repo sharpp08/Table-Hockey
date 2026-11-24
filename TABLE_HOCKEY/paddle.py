@@ -18,6 +18,8 @@ class Paddle:
         self.color = color
         self.hit_flash = 0.0
         self.skin_id = 0
+        self.motion_trail = []
+        self.trail_sample_timer = 0.0
 
     def reset(self, position, radius=None):
         self.pos.update(position)
@@ -26,6 +28,8 @@ class Paddle:
         if radius is not None:
             self.radius = float(radius)
         self.hit_flash = 0.0
+        self.motion_trail.clear()
+        self.trail_sample_timer = 0.0
 
     def update(self, direction, dt, layout, speed_scale=1.0, max_speed=None):
         """Accelerate toward input and constrain the paddle to its own half."""
@@ -55,6 +59,21 @@ class Paddle:
             self.velocity.y = 0.0
         self.hit_flash = max(0.0, self.hit_flash - dt * 4.5)
 
+        # Keep a short history of positions for a smooth, fading anime afterimage.
+        self.trail_sample_timer += max(0.0, dt)
+        moving = self.velocity.length_squared() > 75.0 * 75.0
+        if moving and self.trail_sample_timer >= 0.025:
+            self.motion_trail.append((self.pos.copy(), 0.0))
+            self.trail_sample_timer = 0.0
+        elif not moving:
+            self.trail_sample_timer = min(self.trail_sample_timer, 0.025)
+        updated_trail = []
+        for position, age in self.motion_trail:
+            age += max(0.0, dt)
+            if age < 0.34:
+                updated_trail.append((position, age))
+        self.motion_trail = updated_trail[-9:]
+
     def draw(self, surface, quality, game_time=0.0):
         center = (round(self.pos.x), round(self.pos.y))
         radius = max(4, round(self.radius))
@@ -65,6 +84,27 @@ class Paddle:
             for extra, alpha in ((radius // 2, 12), (radius // 3, 22), (6, 38)):
                 pygame.draw.circle(glow, (*self.color, alpha), gc, radius + extra)
             surface.blit(glow, (center[0] - gc[0], center[1] - gc[1]))
+
+        # Layered afterimages fade smoothly behind the moving paddle.
+        skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
+        body = skin["color"] if skin else self.color
+        accent = skin["accent"] if skin else config.COLOR_WHITE
+        for trail_pos, age in self.motion_trail:
+            fade = max(0.0, 1.0 - age / 0.34)
+            fade = fade * fade
+            alpha = int(92 * fade)
+            if alpha <= 2:
+                continue
+            ghost_radius = max(3, int(radius * (0.82 + 0.12 * fade)))
+            ghost_size = ghost_radius * 2 + 8
+            ghost = pygame.Surface((ghost_size, ghost_size), pygame.SRCALPHA)
+            ghost_center = (ghost_size // 2, ghost_size // 2)
+            pygame.draw.circle(ghost, (*body, int(alpha * 0.30)), ghost_center, ghost_radius + 3)
+            pygame.draw.circle(ghost, (*accent, int(alpha * 0.72)), ghost_center,
+                               ghost_radius + 1, max(1, radius // 10))
+            pygame.draw.circle(ghost, (*body, alpha), ghost_center, ghost_radius)
+            surface.blit(ghost, (round(trail_pos.x) - ghost_center[0],
+                                 round(trail_pos.y) - ghost_center[1]))
 
         # Drop shadow, metallic rim, and campaign skin materials.
         skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
