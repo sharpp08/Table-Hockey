@@ -128,8 +128,8 @@ class AIController:
             contact_gap = paddle.radius + puck.radius + 4.0 * layout.scale
             contact = pygame.Vector2(puck.pos.x, predicted_y) - shot * contact_gap
             # Don't rush straight at the puck: take a moving angle around it.
-            orbit = math.sin(self.clock * 1.25 + self.strafe_phase) * paddle.radius * 0.30
-            contact.y += orbit * (0.35 + aggression)
+            orbit = math.sin(self.clock * 1.25 + self.strafe_phase) * paddle.radius * 0.10
+            contact.y += orbit * (0.20 + aggression * 0.25)
             contact.x = config.clamp(contact.x,
                                      cx + paddle.radius * 0.55, layout.p2_max_x)
             contact.y = config.clamp(contact.y, max(layout.min_y, low),
@@ -185,7 +185,7 @@ class AIController:
         threat = self.last_mode == "intercept"
         attacking = self.last_mode == "attack"
         tracking = self.preset["tracking"] * (
-            1.42 if attacking else (1.30 if threat else 1.0)
+            2.25 if attacking else (1.55 if threat else 1.0)
         )
         response = 1.0 - math.exp(-tracking * dt)
         self.target += (self.planned_target - self.target) * response
@@ -200,12 +200,15 @@ class AIController:
 
         # Ease speed with distance to target; avoid constant full-speed sliding.
         mode_factor = (
-            0.88 if self.last_mode == "recover"
-            else (1.16 if self.last_mode == "attack" else 1.08)
+            0.92 if self.last_mode == "recover"
+            else (1.34 if self.last_mode == "attack" else 1.18)
         )
         base_speed = self.preset["max_speed"] * layout.scale * paddle_speed_scale
         desired_speed = base_speed * mode_factor
-        braking_distance = max(paddle.radius * 0.8, desired_speed * desired_speed / 1900.0)
+        braking_distance = max(
+            paddle.radius * (0.28 if attacking else 0.8),
+            desired_speed * desired_speed / (2600.0 if attacking else 1900.0),
+        )
         if distance < braking_distance:
-            desired_speed *= max(0.22, distance / braking_distance)
+            desired_speed *= max(0.48 if attacking else 0.22, distance / braking_distance)
         return direction, desired_speed
