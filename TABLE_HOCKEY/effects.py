@@ -39,6 +39,7 @@ class EffectsManager:
         self.particles = []
         self.waves = []
         self.flash = 0.0
+        self.flash_color = config.COLOR_WHITE
         self.shake = 0.0
         self.celebrating = False
         self.celebration_color = config.COLOR_GOLD
@@ -59,10 +60,13 @@ class EffectsManager:
         self.particles.clear()
         self.waves.clear()
         self.flash = 0.0
+        self.flash_color = config.COLOR_WHITE
         self.shake = 0.0
         self.celebrating = False
 
     def impact(self, position, normal, color, strength=1.0):
+        self.flash = max(self.flash, min(0.24, 0.07 + strength * 0.07))
+        self.flash_color = color
         budget = self.quality.get("particles", 0)
         if budget:
             count = max(3, min(12, int(5 + strength * 4)))
@@ -78,6 +82,16 @@ class EffectsManager:
                     origin.copy(), velocity, color, life, life,
                     self.rng.uniform(2.0, 5.5),
                 ))
+            # Sharp comic-book impact cuts mixed into the particle burst.
+            for _ in range(max(2, count // 3)):
+                angle = base_angle + self.rng.uniform(-1.35, 1.35)
+                velocity = pygame.Vector2(math.cos(angle), math.sin(angle)) * self.rng.uniform(150, 340)
+                life = self.rng.uniform(0.12, 0.24)
+                self.particles.append(Particle(
+                    origin.copy(), velocity, config.COLOR_WHITE, life, life,
+                    self.rng.uniform(8.0, 16.0), shape="slash",
+                    rotation=math.degrees(angle), spin=self.rng.uniform(-90, 90),
+                ))
         self.waves.append(Shockwave(
             pygame.Vector2(position), color, 0.28, 0.28, 42 + 25 * strength
         ))
@@ -85,6 +99,7 @@ class EffectsManager:
 
     def goal(self, position, color):
         self.flash = 1.0
+        self.flash_color = color
         self.shake = 13.0
         origin = pygame.Vector2(position)
         count = self.quality.get("particles", 0)
@@ -174,10 +189,18 @@ class EffectsManager:
                 rect = pygame.Rect(0, 0, size * 2, size)
                 rect.center = pos
                 pygame.draw.rect(layer, (*particle.color, alpha), rect, border_radius=1)
+            elif particle.shape == "slash":
+                angle = math.radians(particle.rotation)
+                direction = pygame.Vector2(math.cos(angle), math.sin(angle))
+                half = direction * size
+                start = pygame.Vector2(pos) - half
+                end = pygame.Vector2(pos) + half
+                pygame.draw.line(layer, (*particle.color, alpha), start, end,
+                                 max(1, int(size * 0.32)))
             else:
                 pygame.draw.circle(layer, (*particle.color, alpha), pos, size)
         surface.blit(layer, (0, 0))
         if self.flash > 0:
             flash = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            flash.fill((255, 255, 255, int(110 * self.flash)))
+            flash.fill((*self.flash_color, int(125 * self.flash)))
             surface.blit(flash, (0, 0))
