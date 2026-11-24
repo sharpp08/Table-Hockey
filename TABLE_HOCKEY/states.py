@@ -208,15 +208,19 @@ class LeaderboardState(BaseState):
         screen.fill(config.COLOR_BG); w, h = screen.get_size()
         draw_text(screen, "CAREER LEADERBOARD", (w//2, 75), 48, config.COLOR_GOLD, True)
         for i, name in enumerate(("EASY", "NORMAL", "HARD", "NIGHTMARE")):
-            rec = self.data.get(name, {}); wins = int(rec.get("wins", 0)); losses = int(rec.get("losses", 0))
+            rec = self.data.get(name, {})
+            if not isinstance(rec, dict): rec = {}
+            wins, losses = int(rec.get("wins", 0) or 0), int(rec.get("losses", 0) or 0)
             best = rec.get("best_time"); best_text = f"{float(best):.1f}s" if best is not None else "--"
             y = 170 + i * 58
             pygame.draw.rect(screen, config.COLOR_BG_LIGHT, (w//2-330, y-20, 660, 44), border_radius=8)
             draw_text(screen, name, (w//2-225, y), 22, config.COLOR_P1, True)
-            draw_text(screen, f"W {wins}   L {losses}", (w//2, y), 22)
+            draw_text(screen, f"W {wins}   L {losses}   STREAK {int(rec.get('current_streak',0) or 0):+d}", (w//2, y), 22)
             draw_text(screen, f"BEST {best_text}", (w//2+225, y), 22, config.COLOR_GOLD)
         draw_text(screen, "RECENT MATCHES", (w//2, 445), 25, config.COLOR_P1, True)
         history = self.data.get("recent_matches", [])
+        if not isinstance(history, list): history = []
+        history = [item for item in history if isinstance(item, dict)]
         if not history: draw_text(screen, "No completed matches yet.", (w//2, 505), 22, config.COLOR_TEXT_DIM)
         for i, item in enumerate(history[:4]):
             label = f"{item.get('result','?')} • {item.get('difficulty','NORMAL')} • PLAYER {item.get('player_score',0)} - CPU {item.get('cpu_score',0)} • {float(item.get('duration',0)):.1f}s"
