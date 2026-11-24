@@ -169,7 +169,7 @@ class TableHockeyApp:
                 midleft=(rect.left + 13, rect.bottom - 8)
             )
             surface.blit(label_image, label_anchor)
-            shadow = score_font.render(str(score), True, (*accent,))
+            shadow = score_font.render(str(score), True, accent)
             surface.blit(shadow, score_anchor.move(2, 2))
             surface.blit(score_image, score_anchor)
 
