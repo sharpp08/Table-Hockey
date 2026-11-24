@@ -212,7 +212,7 @@ class PauseState(BaseState):
 class SettingsState(BaseState):
     def __init__(self,manager,return_to="MENU"):
         super().__init__(manager); self.return_to=return_to; self.snapshot=dict(self.app.settings.data)
-        self.awaiting_key=None; self.key_error=None; self.controls=[]; self.buttons=[]; self.key_buttons=[]; self._build()
+        self.controls=[]; self.buttons=[]; self._build()
     def _set(self,key,value): self.app.settings.set(key,value); self.app._apply_audio()
     def _build(self):
         w,h=self.app.screen.get_size(); sx,sy=w/1280,h/720
@@ -231,16 +231,10 @@ class SettingsState(BaseState):
             Selector(rect(630,525,250,42),"FPS CAP",["30","60","120","UNLIMITED"],str(self.app.settings.get("fps_cap",60)) if self.app.settings.get("fps_cap",60) else "UNLIMITED",self._fps),
             Selector(rect(630,575,250,36),"GRAPHICS",["LOW","MEDIUM","HIGH"],self.app.settings.get("graphics_quality","HIGH"),lambda v:self._set("graphics_quality",v)),
             Selector(rect(630,615,250,32),"TABLE THEME",["NEON","CYBER","SUNSET"],self.app.settings.get("table_theme","NEON"),lambda v:self._set("table_theme",v))]
-        binds=self.app.settings.get("keybindings",{})
-        defaults={"up":"w","left":"a","down":"s","right":"d"}
-        for i,action in enumerate(("up","left","down","right")):
-            key=binds.get(action,defaults[action])
-            self.key_buttons.append(Button(rect(175,425+i*45,190,36),f"{action.upper()}: {str(key).upper()}",lambda a=action:self._capture(a),config.COLOR_GOLD))
         self.buttons=[Button(rect(405,660,180,42),"APPLY",self.apply),Button(rect(610,660,180,42),"BACK / CANCEL",self.cancel,config.COLOR_P2),Button(rect(815,660,205,42),"RESET DEFAULTS",self.reset,config.COLOR_GOLD)]
     def _resolution(self,value):
         x,y=value.split("x"); self._set("resolution",(int(x),int(y)))
     def _fps(self,value): self._set("fps_cap",0 if value=="UNLIMITED" else int(value))
-    def _capture(self,action): self.awaiting_key=action; self.key_error=None
     def reset(self):
         from config import DEFAULT_SETTINGS
         import copy
@@ -251,7 +245,7 @@ class SettingsState(BaseState):
         self.app.settings.data=self.snapshot; self.app.apply_runtime_settings(rebuild_video=True); self.manager.change(self.return_to)
     def update(self,dt):
         mouse=pygame.mouse.get_pos()
-        for b in self.key_buttons+self.buttons: b.update(dt,mouse)
+        for b in self.buttons: b.update(dt,mouse)
     def draw(self,screen):
         w,h=screen.get_size()
         draw_arcade_background(screen,self.app.game_time,"SYSTEM SETTINGS","TUNE YOUR ARCADE EXPERIENCE")
@@ -259,30 +253,14 @@ class SettingsState(BaseState):
         draw_arcade_panel(screen,(int(w*.53),int(h*.20),int(w*.40),int(h*.64)),config.COLOR_P2,220)
         draw_text(screen,"AUDIO & CONTROLS",(int(w*.27),int(h*.25)),24,config.COLOR_P1,True)
         draw_text(screen,"VIDEO & GAMEPLAY",(int(w*.73),int(h*.25)),24,config.COLOR_P2,True)
-        draw_text(screen,"KEY BINDINGS • SELECT AN ACTION, THEN PRESS A KEY",
-                  (int(w*.28),int(h*.55)),17,config.COLOR_TEXT_DIM)
+        draw_text(screen,"PADDLE CONTROL  •  MOVE WITH THE MOUSE",
+                  (int(w*.27),int(h*.58)),19,config.COLOR_GOLD,True)
         for item in self.controls: item.draw(screen)
-        for b in self.key_buttons+self.buttons: b.draw(screen)
-        if self.awaiting_key:
-            prompt=self.key_error or f"PRESS A KEY FOR {self.awaiting_key.upper()} • ESC TO CANCEL"
-            draw_text(screen,prompt,(w//2,int(h*.95)),20,
-                      config.COLOR_P2_LIGHT if self.key_error else config.COLOR_GOLD)
+        for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
-        if self.awaiting_key and event.type==pygame.KEYDOWN:
-            if event.key==pygame.K_ESCAPE: self.awaiting_key=None; self.key_error=None; return
-            keyname=pygame.key.name(event.key); binds=dict(self.app.settings.get("keybindings",{}))
-            if keyname in binds.values() and binds.get(self.awaiting_key) != keyname:
-                self.key_error="THAT KEY IS ALREADY ASSIGNED"
-                self.app.audio.play("wall")
-                return
-            binds[self.awaiting_key]=keyname; self.app.settings.set("keybindings",binds)
-            for b in self.key_buttons:
-                action=b.label.split(":")[0].lower()
-                if action==self.awaiting_key: b.label=f"{action.upper()}: {keyname.upper()}"
-            self.awaiting_key=None; self.key_error=None; return
         for item in self.controls:
             if item.handle_event(event): return
-        for b in self.key_buttons+self.buttons:
+        for b in self.buttons:
             if b.handle_event(event): self.app.audio.play("click"); return
         if event.type==pygame.KEYDOWN and event.key==pygame.K_ESCAPE: self.cancel()
 
