@@ -84,11 +84,11 @@ class TableHockeyApp:
                     paddle.velocity.update(velocity.x * sx, velocity.y * sy)
                 self.match.ai.reset(self.match.paddles[1].pos)
             self.match.configure_settings(self.settings)
-            self.renderer = TableRenderer(self.layout, self.settings.quality)
+            self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
             self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
         else:
             self.match.configure_settings(self.settings)
-            self.renderer = TableRenderer(self.layout, self.settings.quality)
+            self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
         self._apply_audio()
         self.show_fps = bool(self.settings.get("show_fps", True))
 
