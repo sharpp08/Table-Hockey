@@ -60,11 +60,13 @@ class Match:
         curve = progress ** 0.88
         base = dict(base_preset or config.AI_BASE_PRESET)
         return {
+            # Build difficulty steadily: Level 1 is approachable, while later
+            # levels gain speed, quicker decisions, precision and pressure.
             "max_speed": base["max_speed"] + 500.0 * curve,
-            "reaction": max(0.025, base["reaction"] - 0.015 * curve),
-            "aim_error": max(0.35, base["aim_error"] - 1.65 * curve),
-            "aggression": min(0.99, base["aggression"] + 0.17 * curve),
-            "tracking": 14.0 + 19.0 * curve,
+            "reaction": max(0.055, base["reaction"] - 0.055 * curve),
+            "aim_error": max(2.0, base["aim_error"] - 6.0 * curve),
+            "aggression": min(0.90, base["aggression"] + 0.32 * curve),
+            "tracking": 8.0 + 17.0 * curve,
         }
 
     def configure_settings(self, settings):
