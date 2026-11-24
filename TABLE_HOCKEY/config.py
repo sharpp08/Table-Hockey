@@ -75,11 +75,11 @@ MATCH_TIMER = False       # show an elapsed timer in the HUD
 # Campaign-driven CPU baseline. Level 1 should already feel alert and capable;
 # the campaign curve still adds speed, reaction time and precision through level 30.
 AI_BASE_PRESET = {
-    # Level 1 remains aggressive, but gives new players time to react.
-    "reaction": 0.11,
-    "max_speed": 560.0,
-    "aim_error": 8.0,
-    "aggression": 0.58,
+    # Early campaign levels leave a little more room for new players to react.
+    "reaction": 0.13,
+    "max_speed": 520.0,
+    "aim_error": 10.0,
+    "aggression": 0.52,
 }
 
 # Default settings (used when no config file exists yet)
