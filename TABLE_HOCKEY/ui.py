@@ -55,7 +55,7 @@ class AnimatedButton:
         progress = self.hover_progress
         base = tuple(max(0, int(c * (1.15 + 0.25 * progress))) for c in config.COLOR_BG_LIGHT)
         UI.rounded_panel(surface, rect, base, 235, radius=12,
-                         border=self.color if progress > 0.35 else config.COLOR_TABLE_EDGE)
+                         border=self.color if progress > 0.35 else edge_color)
         text = self.font.render(self.label, True, config.COLOR_TEXT)
         text_bg = pygame.Surface((text.get_width() + 10, text.get_height()), pygame.SRCALPHA)
         text_bg.blit(text, (5, 0))
@@ -80,9 +80,16 @@ class AnimatedButton:
 class TableRenderer:
     """Draws the complete air-hockey table once into a cached surface."""
 
-    def __init__(self, layout, quality):
+    def __init__(self, layout, quality, theme="NEON"):
         self.layout = layout
         self.quality = quality
+        self.theme = str(theme).upper()
+        palettes = {
+            "NEON": ((13, 16, 24), (20, 27, 44), (60, 72, 100), (90, 110, 150), (50, 60, 85), (18, 22, 34)),
+            "CYBER": ((8, 13, 23), (14, 27, 45), (45, 105, 145), (75, 165, 210), (35, 82, 120), (12, 28, 48)),
+            "SUNSET": ((20, 12, 25), (38, 20, 32), (130, 60, 80), (210, 110, 130), (100, 55, 75), (45, 20, 35)),
+        }
+        self.palette = palettes.get(self.theme, palettes["NEON"])
         self.surface = None
         self._build()
 
@@ -90,13 +97,14 @@ class TableRenderer:
         l = self.layout
         w, h = l.w, l.h
         self.surface = pygame.Surface((w, h))
-        self.surface.fill(config.COLOR_BG)
+        bg_color, table_color, edge_color, line_color, faint_color, border_color = self.palette
+        self.surface.fill(bg_color)
 
         # Background gradient for depth
         for i in range(24):
             y = int(i / 24 * h)
             shade = 0.65 + 0.35 * math.sin(i / 24 * math.pi)
-            color = config.scale_color(config.COLOR_BG, 0.7 + 0.35 * shade)
+            color = config.scale_color(bg_color, 0.7 + 0.35 * shade)
             pygame.draw.line(self.surface, color, (0, y), (w, y))
 
         # Table base (rounded)
@@ -104,7 +112,7 @@ class TableRenderer:
         radius = int(config.RADIUS * l.w)
         pygame.draw.rect(self.surface, (10, 13, 22), rect.inflate(28, 28), border_radius=radius + 14)
         pygame.draw.rect(self.surface, config.COLOR_TABLE_EDGE, rect.inflate(20, 20), border_radius=radius + 10)
-        pygame.draw.rect(self.surface, config.COLOR_TABLE, rect, border_radius=radius)
+        pygame.draw.rect(self.surface, table_color, rect, border_radius=radius)
 
         # Subtle inner vignette
         inner = pygame.Rect(int(l.inner_x), int(l.inner_y), int(l.inner_w), int(l.inner_h))
@@ -117,10 +125,10 @@ class TableRenderer:
 
         # Center line + circle
         cx = int(l.center_x)
-        pygame.draw.line(self.surface, config.COLOR_LINE, (cx, l.inner_y), (cx, l.inner_y + l.inner_h), 3)
+        pygame.draw.line(self.surface, line_color, (cx, l.inner_y), (cx, l.inner_y + l.inner_h), 3)
         ccr = int(l.inner_h * 0.16)
         pygame.draw.circle(self.surface, config.COLOR_LINE, (cx, int(l.center_y)), ccr, 3)
-        pygame.draw.circle(self.surface, config.COLOR_LINE_FAINT, (cx, int(l.center_y)), max(2, ccr // 4), 4)
+        pygame.draw.circle(self.surface, faint_color, (cx, int(l.center_y)), max(2, ccr // 4), 4)
 
         # Goal creases (face-off arcs toward each goal)
         for side in (-1, 1):
@@ -150,7 +158,7 @@ class TableRenderer:
                              (int(x), bottom), (int(x) + side * 6, bottom), 2)
 
         # Outer wall highlight
-        pygame.draw.rect(self.surface, config.COLOR_TABLE_BORDER,
+        pygame.draw.rect(self.surface, border_color,
                          pygame.Rect(int(l.table_x), int(l.table_y), int(l.table_w), int(l.table_h)),
                          4, border_radius=radius)
 
