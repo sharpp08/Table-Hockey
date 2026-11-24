@@ -54,7 +54,7 @@ class MenuState(BaseState):
         draw_text(screen,"TABLE HOCKEY",(w//2,int(h*.20)),int(h*.105),config.COLOR_WHITE,True)
         draw_text(screen,"ARCADE AIR HOCKEY",(w//2,int(h*.29)),25,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
-        draw_text(screen,f"DIFFICULTY  •  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.83)),26,config.COLOR_GOLD)
+        draw_text(screen,f"LEVEL  {self.match.level} / 30",(w//2,int(h*.43)),25,config.COLOR_GOLD)
         draw_text(screen,"W / S or ↑ / ↓   •   ENTER to select",(w//2,int(h*.91)),20,config.COLOR_TEXT_DIM)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
@@ -314,9 +314,9 @@ class EndState(BaseState):
         draw_text(screen,"VICTORY!" if self.victory else "GAME OVER",(w//2,int(h*.16)),64,config.COLOR_GOLD if self.victory else config.COLOR_P2_LIGHT,True)
         draw_text(screen,f"PLAYER {self.match.players[0].score}  —  CPU {self.match.players[1].score}",(w//2,int(h*.29)),32)
         draw_text(screen,f"TIME PLAYED  {self.app._format_time(self.match.match_time)}",(w//2,int(h*.37)),25)
-        draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.43)),25,config.COLOR_GOLD)
+        draw_text(screen,f"LEVEL  {self.match.level} / 30",(w//2,int(h*.43)),25,config.COLOR_GOLD)
         draw_text(screen,f"GOALS SCORED  {self.match.players[0].score}",(w//2,int(h*.49)),24)
-        status = "NEW BEST TIME!" if self.victory and self.record else ("CAREER WIN SAVED" if self.victory else "HIGH SCORE RETAINED")
+        status = "CAMPAIGN COMPLETE!" if self.victory and self.match.level >= 30 else (f"LEVEL {self.match.level + 1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
         draw_text(screen,status,(w//2,int(h*.55)),21,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
