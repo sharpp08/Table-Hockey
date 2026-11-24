@@ -1,6 +1,7 @@
 """Table Hockey application entry point with a central screen state manager."""
 import os
 import sys
+import json
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 if _THIS_DIR not in sys.path:
@@ -24,6 +25,7 @@ class TableHockeyApp:
         self.audio = AudioManager()
         self._apply_audio()
         self.audio.start_music()
+        self.current_level = self._load_current_level()
         self._build_match()
         self.clock = pygame.time.Clock()
         self.running = True
@@ -49,9 +51,18 @@ class TableHockeyApp:
         else:
             self.audio.stop_music()
 
+    def _load_current_level(self):
+        path = os.path.join(_THIS_DIR, "save", "high_scores.json")
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return max(1, min(30, int(data.get("current_level", 1)))) if isinstance(data, dict) else 1
+        except (OSError, ValueError, TypeError, AttributeError):
+            return 1
+
     def _build_match(self):
         self.layout = Layout(*self.screen.get_size())
-        self.match = Match(self.layout, self.settings, self.audio)
+        self.match = Match(self.layout, self.settings, self.audio, level=self.current_level)
         self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
         self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
 
