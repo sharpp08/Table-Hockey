@@ -75,8 +75,18 @@ class LevelSelectState(BaseState):
     def __init__(self,manager):
         super().__init__(manager)
         self.index=0
-        self.unlocked=max(1,min(30,int(self.app.current_level)))
+        self.unlocked=self._load_unlocked()
         self._build()
+
+    def _load_unlocked(self):
+        # Read the saved campaign frontier, not the last replayed level.
+        try:
+            with open(SCORES_PATH,"r",encoding="utf-8") as f:
+                data=json.load(f)
+            value=data.get("current_level",self.app.current_level) if isinstance(data,dict) else self.app.current_level
+            return max(1,min(30,int(value)))
+        except (OSError,ValueError,TypeError,AttributeError):
+            return max(1,min(30,int(self.app.current_level)))
 
     def _build(self):
         w,h=self.app.screen.get_size()
