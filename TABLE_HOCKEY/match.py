@@ -54,15 +54,18 @@ class Match:
         self.effects.clear()
 
     # ------------------------------------------------------------------ #
-    def _level_ai_preset(self, base_preset):
-        """Scale CPU reaction, speed and accuracy gradually across 30 levels."""
+    def _level_ai_preset(self, base_preset=None):
+        """One continuous campaign curve: level 1 is forgiving, level 30 is elite."""
         progress = (self.level - 1) / 29.0
-        preset = dict(base_preset)
-        preset["max_speed"] = float(preset["max_speed"]) * (1.0 + 0.70 * progress)
-        preset["reaction"] = max(0.025, float(preset["reaction"]) * (1.0 - 0.65 * progress))
-        preset["aim_error"] = max(0.10, float(preset["aim_error"]) * (1.0 - 0.90 * progress))
-        preset["aggression"] = min(0.99, float(preset["aggression"]) + 0.23 * progress)
-        return preset
+        curve = progress ** 0.88
+        base = dict(base_preset or config.AI_BASE_PRESET)
+        return {
+            "max_speed": base["max_speed"] + 285.0 * curve,
+            "reaction": max(0.032, base["reaction"] - 0.105 * curve),
+            "aim_error": max(0.85, base["aim_error"] - 9.15 * curve),
+            "aggression": min(0.88, base["aggression"] + 0.56 * curve),
+            "tracking": 9.0 + 13.0 * curve,
+        }
 
     def configure_settings(self, settings):
         self.settings = settings
