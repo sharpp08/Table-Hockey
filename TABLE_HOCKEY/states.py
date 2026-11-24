@@ -54,7 +54,7 @@ class MenuState(BaseState):
         draw_text(screen,"TABLE HOCKEY",(w//2,int(h*.20)),int(h*.105),config.COLOR_WHITE,True)
         draw_text(screen,"ARCADE AIR HOCKEY",(w//2,int(h*.29)),25,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
-        draw_text(screen,f"LEVEL  {self.match.level} / 30",(w//2,int(h*.43)),25,config.COLOR_GOLD)
+        draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.83)),26,config.COLOR_GOLD)
         draw_text(screen,"W / S or ↑ / ↓   •   ENTER to select",(w//2,int(h*.91)),20,config.COLOR_TEXT_DIM)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
