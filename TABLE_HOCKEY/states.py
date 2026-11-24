@@ -17,7 +17,7 @@ class StateManager:
         self.app=app; self.current_name="MENU"; self.active=MenuState(self)
         self.fade_time=.42; self.fade_elapsed=self.fade_time
     def change(self,name,**kwargs):
-        classes={"MENU":MenuState,"SETTINGS":SettingsState,"HOW_TO":HowToState,
+        classes={"MENU":MenuState,"LEVEL_SELECT":LevelSelectState,"SETTINGS":SettingsState,"HOW_TO":HowToState,
                  "PLAYING":PlayingState,"PAUSED":PauseState,"GAME_OVER":EndState,"VICTORY":EndState}
         self.current_name=name
         self.active=classes[name](self,**kwargs) if kwargs else classes[name](self)
@@ -40,7 +40,7 @@ class MenuState(BaseState):
         actions=[("START GAME",self.start),("SETTINGS",lambda:self.manager.change("SETTINGS",return_to="MENU")),
                  ("HOW TO PLAY",lambda:self.manager.change("HOW_TO")),("QUIT",lambda:setattr(self.app,"running",False))]
         self.buttons=[Button((cx-155,int(h*.38)+i*55,310,46),label,cb) for i,(label,cb) in enumerate(actions)]
-    def start(self): self.app.new_match(); self.manager.change("PLAYING")
+    def start(self): self.manager.change("LEVEL_SELECT")
     def update(self,dt):
         self.time+=dt; mouse=pygame.mouse.get_pos()
         for i,b in enumerate(self.buttons): b.update(dt,mouse,i==self.index)
@@ -69,6 +69,77 @@ class MenuState(BaseState):
         elif event.type==pygame.MOUSEBUTTONDOWN:
             for b in self.buttons:
                 if b.handle_event(event): self.app.audio.play("click"); break
+
+class LevelSelectState(BaseState):
+    """Campaign map: only levels reached through victories are selectable."""
+    def __init__(self,manager):
+        super().__init__(manager)
+        self.index=0
+        self.unlocked=max(1,min(30,int(self.app.current_level)))
+        self._build()
+
+    def _build(self):
+        w,h=self.app.screen.get_size()
+        sx,sy=w/1280,h/720
+        cols=5
+        gap=int(14*sx)
+        bw=int(150*sx)
+        bh=int(58*sy)
+        total=cols*bw+(cols-1)*gap
+        left=(w-total)//2
+        top=int(h*.29)
+        self.level_buttons=[]
+        for level in range(1,31):
+            row,col=divmod(level-1,cols)
+            rect=(left+col*(bw+gap),top+row*(bh+int(13*sy)),bw,bh)
+            unlocked=level<=self.unlocked
+            label=f"LEVEL {level:02d}" if unlocked else f"LOCKED  {level:02d}"
+            button=Button(rect,label,lambda n=level:self.select_level(n),
+                          config.COLOR_GOLD if level==self.app.current_level else config.COLOR_P1)
+            button.enabled=unlocked
+            self.level_buttons.append(button)
+        self.back_button=Button((w//2-int(125*sx),int(h*.86),int(250*sx),int(46*sy)),
+                                "BACK TO MENU",lambda:self.manager.change("MENU"),config.COLOR_P2)
+
+    def select_level(self,level):
+        if level<1 or level>self.unlocked: return
+        self.app.current_level=level
+        self.app.new_match()
+        self.manager.change("PLAYING")
+
+    def update(self,dt):
+        mouse=pygame.mouse.get_pos()
+        for i,b in enumerate(self.level_buttons): b.update(dt,mouse,i==self.index)
+        self.back_button.update(dt,mouse)
+
+    def draw(self,screen):
+        screen.fill(config.COLOR_BG)
+        w,h=screen.get_size()
+        draw_text(screen,"CAMPAIGN SELECT",(w//2,int(h*.13)),56,config.COLOR_GOLD,True)
+        draw_text(screen,f"UNLOCKED THROUGH LEVEL {self.unlocked}  /  30",
+                  (w//2,int(h*.21)),25,config.COLOR_TEXT_DIM)
+        for b in self.level_buttons: b.draw(screen)
+        self.back_button.draw(screen)
+        draw_text(screen,"WIN TO UNLOCK THE NEXT LEVEL  •  EACH LEVEL MAKES THE CPU STRONGER",
+                  (w//2,int(h*.80)),19,config.COLOR_TEXT_DIM)
+
+    def handle_event(self,event):
+        if event.type==pygame.KEYDOWN:
+            if event.key in (pygame.K_ESCAPE,pygame.K_BACKSPACE):
+                self.manager.change("MENU"); return
+            if event.key in (pygame.K_LEFT,pygame.K_a): self.index=(self.index-1)%30
+            elif event.key in (pygame.K_RIGHT,pygame.K_d): self.index=(self.index+1)%30
+            elif event.key in (pygame.K_UP,pygame.K_w): self.index=(self.index-5)%30
+            elif event.key in (pygame.K_DOWN,pygame.K_s): self.index=(self.index+5)%30
+            elif event.key in (pygame.K_RETURN,pygame.K_SPACE):
+                self.level_buttons[self.index].callback() if self.level_buttons[self.index].enabled else None
+        if event.type==pygame.MOUSEBUTTONDOWN:
+            if self.back_button.handle_event(event):
+                self.app.audio.play("click"); return
+            for b in self.level_buttons:
+                if b.handle_event(event):
+                    self.app.audio.play("click"); return
+
 
 class HowToState(BaseState):
     def draw(self,screen):
