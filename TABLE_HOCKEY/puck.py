@@ -51,11 +51,30 @@ class Puck:
             for index, point in enumerate(points[:-1]):
                 strength = (index + 1) / len(points)
                 rr = max(2, int(radius * strength * 0.72))
+                tint = (95, 205, 255) if index % 2 else (185, 135, 255)
                 pygame.draw.circle(
-                    layer, (*config.COLOR_PUCK, int(65 * strength)),
+                    layer, (*tint, int(76 * strength)),
                     (round(point.x), round(point.y)), rr,
                 )
             surface.blit(layer, (0, 0))
+
+        # Anime-style motion cuts: short tapered energy strokes aligned to puck travel.
+        speed = self.velocity.length()
+        if speed > 180.0:
+            direction = self.velocity.normalize()
+            side = pygame.Vector2(-direction.y, direction.x)
+            intensity = min(1.0, speed / 1050.0)
+            length = radius * (3.0 + 7.0 * intensity)
+            streak_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            for index, spread in enumerate((-0.52, 0.0, 0.52)):
+                offset = side * (spread * radius * 1.65)
+                start = pygame.Vector2(center) - direction * (radius * 0.8) + offset
+                end = start - direction * length
+                color = (105, 220, 255) if index != 1 else (245, 225, 255)
+                alpha = int((65 + 125 * intensity) * (1.0 if index == 1 else 0.72))
+                pygame.draw.line(streak_layer, (*color, alpha), start, end,
+                                 max(1, int(radius * (0.18 if index else 0.28))))
+            surface.blit(streak_layer, (0, 0))
 
         if quality.get("glow", False):
             glow_r = radius * 3
