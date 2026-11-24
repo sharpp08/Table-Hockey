@@ -66,9 +66,6 @@ class SettingsStore:
         d["puck_speed"]    = clamp(float(d.get("puck_speed", 1.0)), 0.5, 1.5)
         d["paddle_speed"]  = clamp(float(d.get("paddle_speed", 1.0)), 0.5, 1.5)
         d["win_score"]     = int(clamp(int(d.get("win_score", 5)), 3, 10))
-        d["ai_difficulty"] = d.get("ai_difficulty", "NORMAL").upper()
-        if d["ai_difficulty"] not in config.AI_PRESETS:
-            d["ai_difficulty"] = "NORMAL"
         d["fullscreen"]    = bool(d.get("fullscreen", False))
         res = tuple(d.get("resolution", config.BASE_RESOLUTION))
         d["resolution"]    = res if res in config.RESOLUTIONS else config.BASE_RESOLUTION
@@ -126,7 +123,7 @@ class SettingsStore:
 
     @property
     def ai_preset(self):
-        return config.DIFFICULTY[self.data["ai_difficulty"]]
+        return config.AI_BASE_PRESET
 
     @property
     def sfx_volume(self):
