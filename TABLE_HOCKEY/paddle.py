@@ -99,25 +99,43 @@ class Paddle:
         ring_layer = pygame.Surface((ring_size, ring_size), pygame.SRCALPHA)
         ring_rect = pygame.Rect(2, 2, ring_size - 4, ring_size - 4)
         rotation = game_time * (2.2 if self.side < 0 else -1.8)
+        pulse = 0.5 + 0.5 * math.sin(game_time * 3.1 + self.side * 0.7)
+        ring_alpha = int(58 + 102 * pulse)
+        ring_width = max(1, int(radius / 10 * (0.82 + pulse * 0.28)))
         for segment in range(3):
             start = rotation + segment * math.tau / 3.0
-            pygame.draw.arc(ring_layer, (*accent, 185),
-                            ring_rect, start, start + 0.72, max(1, radius // 10))
+            pygame.draw.arc(ring_layer, (*accent, ring_alpha),
+                            ring_rect, start, start + 0.62 + pulse * 0.16, ring_width)
         surface.blit(ring_layer, (center[0] - ring_size // 2, center[1] - ring_size // 2))
 
-        # Fast paddle movement leaves two brief directional cuts.
+        # Movement cuts ease in with speed and taper toward their trailing ends.
         speed = self.velocity.length()
-        if speed > 90.0:
+        motion_fade = max(0.0, min(1.0, (speed - 55.0) / 300.0))
+        motion_fade = motion_fade * motion_fade * (3.0 - 2.0 * motion_fade)
+        if motion_fade > 0.015:
             direction = self.velocity.normalize()
             side_vector = pygame.Vector2(-direction.y, direction.x)
             length = min(radius * 2.2, speed * 0.018)
+            cuts = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             for sign in (-1, 1):
                 start = pygame.Vector2(center) - direction * (radius * 0.8) + side_vector * sign * radius * 0.48
+                mid = start - direction * (length * 0.55)
                 end = start - direction * length
-                pygame.draw.line(surface, accent, start, end, max(1, radius // 9))
+                pygame.draw.line(cuts, (*accent, int(145 * motion_fade)),
+                                 (round(start.x), round(start.y)),
+                                 (round(mid.x), round(mid.y)), max(1, radius // 9))
+                pygame.draw.line(cuts, (*accent, int(55 * motion_fade)),
+                                 (round(mid.x), round(mid.y)),
+                                 (round(end.x), round(end.y)), max(1, radius // 12))
+            surface.blit(cuts, (0, 0))
 
+        # Hit sparks bloom quickly and then dissolve with the hit envelope.
         if self.hit_flash > 0:
-            pygame.draw.circle(surface, config.COLOR_WHITE, center, radius + 7, 3)
+            hit = max(0.0, min(1.0, self.hit_flash))
+            hit = hit * hit * (3.0 - 2.0 * hit)
+            hit_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
+            pygame.draw.circle(hit_layer, (255, 255, 255, int(170 * hit)),
+                               center, radius + 7, 3)
             burst = pygame.Surface((radius * 5, radius * 5), pygame.SRCALPHA)
             origin = (radius * 2 + radius // 2, radius * 2 + radius // 2)
             for angle in range(0, 360, 45):
@@ -126,5 +144,7 @@ class Paddle:
                          origin[1] + math.sin(a) * (radius + 3))
                 end = (origin[0] + math.cos(a) * (radius + 11),
                        origin[1] + math.sin(a) * (radius + 11))
-                pygame.draw.line(burst, (*accent, 190), start, end, max(1, radius // 10))
-            surface.blit(burst, (center[0] - origin[0], center[1] - origin[1]))
+                pygame.draw.line(burst, (*accent, int(190 * hit)),
+                                 start, end, max(1, radius // 10))
+            hit_layer.blit(burst, (center[0] - origin[0], center[1] - origin[1]))
+            surface.blit(hit_layer, (0, 0))
