@@ -92,5 +92,39 @@ class Paddle:
             (center[0] - int(radius * 0.22), center[1] - int(radius * 0.25)),
             max(2, int(radius * 0.13)),
         )
+
+        # Rotating anime-tech glyphs around each paddle; drawn as a small alpha layer.
+        ring_r = radius + max(5, radius // 3)
+        ring_size = ring_r * 2 + 4
+        ring_layer = pygame.Surface((ring_size, ring_size), pygame.SRCALPHA)
+        ring_rect = pygame.Rect(2, 2, ring_size - 4, ring_size - 4)
+        rotation = game_time * (2.2 if self.side < 0 else -1.8)
+        for segment in range(3):
+            start = rotation + segment * math.tau / 3.0
+            pygame.draw.arc(ring_layer, (*accent, 185),
+                            ring_rect, start, start + 0.72, max(1, radius // 10))
+        surface.blit(ring_layer, (center[0] - ring_size // 2, center[1] - ring_size // 2))
+
+        # Fast paddle movement leaves two brief directional cuts.
+        speed = self.velocity.length()
+        if speed > 90.0:
+            direction = self.velocity.normalize()
+            side_vector = pygame.Vector2(-direction.y, direction.x)
+            length = min(radius * 2.2, speed * 0.018)
+            for sign in (-1, 1):
+                start = pygame.Vector2(center) - direction * (radius * 0.8) + side_vector * sign * radius * 0.48
+                end = start - direction * length
+                pygame.draw.line(surface, accent, start, end, max(1, radius // 9))
+
         if self.hit_flash > 0:
             pygame.draw.circle(surface, config.COLOR_WHITE, center, radius + 7, 3)
+            burst = pygame.Surface((radius * 5, radius * 5), pygame.SRCALPHA)
+            origin = (radius * 2 + radius // 2, radius * 2 + radius // 2)
+            for angle in range(0, 360, 45):
+                a = math.radians(angle + game_time * 90.0)
+                start = (origin[0] + math.cos(a) * (radius + 3),
+                         origin[1] + math.sin(a) * (radius + 3))
+                end = (origin[0] + math.cos(a) * (radius + 11),
+                       origin[1] + math.sin(a) * (radius + 11))
+                pygame.draw.line(burst, (*accent, 190), start, end, max(1, radius // 10))
+            surface.blit(burst, (center[0] - origin[0], center[1] - origin[1]))
