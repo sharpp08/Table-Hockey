@@ -107,8 +107,8 @@ class Match:
         self.effects.stop_celebration()
         self.reset_for_serve(serve_to)
     # ------------------------------------------------------------------ #
-    def update(self, dt, keys=None):
-        """Advance the match. Returns a list of UI/audio event names."""
+    def update(self, dt, keys=None, mouse_position=None):
+        """Advance the match. Mouse position drives P1 when supplied."""
         dt = min(max(dt, 0.0), 0.05)
         keys = keys or pygame.key.get_pressed()
         out = []
@@ -146,18 +146,36 @@ class Match:
         # PLAYING
         self.match_time += dt
 
-        binds = self.settings.get("keybindings", {"up": "w", "left": "a", "down": "s", "right": "d"})
-        try:
-            p1_controller = HumanController(
-                pygame.key.key_code(binds.get("up", "w")),
-                pygame.key.key_code(binds.get("down", "s")),
-                pygame.key.key_code(binds.get("left", "a")),
-                pygame.key.key_code(binds.get("right", "d")),
+        if mouse_position is not None:
+            # Mouse controls the player's paddle directly, constrained to the
+            # player's half of the table and the legal vertical play area.
+            target = pygame.Vector2(mouse_position)
+            target.x = config.clamp(target.x, self.layout.p1_min_x, self.layout.p1_max_x)
+            target.y = config.clamp(target.y, self.layout.min_y, self.layout.max_y)
+            offset = target - self.paddles[0].pos
+            distance = offset.length()
+            direction = offset / distance if distance > 0.01 else pygame.Vector2()
+            max_mouse_speed = config.PADDLE_SPEED * self.layout.scale * self.paddle_speed_scale
+            follow_speed = min(max_mouse_speed, distance * 10.0)
+            self.paddles[0].update(
+                direction, dt, self.layout, self.paddle_speed_scale,
+                max_speed=follow_speed,
             )
-        except (ValueError, TypeError):
-            p1_controller = HumanController(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)
-        p1_dir = p1_controller.direction(keys)
-        self.paddles[0].update(p1_dir, dt, self.layout, self.paddle_speed_scale)
+        else:
+            # Keep keyboard control available for callers that do not provide
+            # a mouse position (for example automated tests or alternate modes).
+            binds = self.settings.get("keybindings", {"up": "w", "left": "a", "down": "s", "right": "d"})
+            try:
+                p1_controller = HumanController(
+                    pygame.key.key_code(binds.get("up", "w")),
+                    pygame.key.key_code(binds.get("down", "s")),
+                    pygame.key.key_code(binds.get("left", "a")),
+                    pygame.key.key_code(binds.get("right", "d")),
+                )
+            except (ValueError, TypeError):
+                p1_controller = HumanController(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)
+            p1_dir = p1_controller.direction(keys)
+            self.paddles[0].update(p1_dir, dt, self.layout, self.paddle_speed_scale)
 
         if self.mode == "single":
             direction, max_speed = self.ai.update(
