@@ -30,6 +30,8 @@ class TableHockeyApp:
         self.player_skin_id = self._load_player_skin()
         self._build_match()
         self.clock = pygame.time.Clock()
+        self.fixed_dt = 1.0 / 120.0
+        self._update_accumulator = 0.0
         self.running = True
         self.game_time = 0.0
         self.show_fps = bool(self.settings.get("show_fps", True))
@@ -175,11 +177,18 @@ class TableHockeyApp:
     def run(self):
         while self.running:
             cap = int(self.settings.get("fps_cap", 60))
-            dt = self.clock.tick(0 if cap <= 0 else cap) / 1000.0
-            dt = min(dt, 0.05)
+            frame_dt = min(self.clock.tick(0 if cap <= 0 else cap) / 1000.0, 0.05)
             for event in pygame.event.get():
                 self.handle_event(event)
-            self.update(dt)
+            self._update_accumulator += frame_dt
+            # Run gameplay at a stable 120 Hz regardless of display refresh rate.
+            steps = 0
+            while self._update_accumulator >= self.fixed_dt and steps < 8:
+                self.update(self.fixed_dt)
+                self._update_accumulator -= self.fixed_dt
+                steps += 1
+            if steps >= 8:
+                self._update_accumulator = 0.0
             self.draw()
         self.audio.stop()
         pygame.quit()
