@@ -8,7 +8,7 @@ import config
 
 
 class AIController:
-    """A reactive opponent that patrols, intercepts, pressures and attacks dynamically."""
+    """An aggressive opponent that constantly pressures and attacks."""
 
     def __init__(self, preset, rng=None):
         self.rng = rng or random.Random()
@@ -76,32 +76,17 @@ class AIController:
         speed = max(1.0, puck.velocity.length())
 
         if not puck.active:
-            self.last_mode = "recover"
-            return pygame.Vector2(home_x, config.lerp(cy, puck.pos.y, 0.10))
+            # Stay forward and ready to launch the next attack; never retreat
+            # to a passive goal-side home position.
+            self.last_mode = "attack"
+            return pygame.Vector2(
+                layout.p2_min_x + w * 0.035,
+                config.lerp(cy, puck.pos.y, 0.35),
+            )
 
-        toward_cpu = puck.velocity.x > 18.0 * layout.scale
         in_cpu_half = puck.pos.x > cx
-        danger = toward_cpu and puck.pos.x > cx - w * 0.16
 
-        if danger and not in_cpu_half:
-            # Defend only while the puck is still on the player's half. Once it
-            # crosses into CPU territory, switch to an actual counter-attack.
-            urgency = config.clamp(
-                1.0 - (layout.p2_goal_x - puck.pos.x) / (w * 0.68), 0.0, 1.0
-            )
-            intercept_x = config.lerp(guard_x, home_x - w * 0.025, urgency)
-            predicted_y, travel = self._predict(puck, intercept_x, layout)
-            reachable = self.preset["max_speed"] * layout.scale * max(0.10, travel)
-            if abs(predicted_y - paddle.pos.y) > reachable:
-                predicted_y = config.lerp(paddle.pos.y, predicted_y, 0.48)
-            # Move forward only when the paddle can plausibly reach the lane.
-            forward = config.lerp(0.24, 0.76, urgency) * (0.55 + aggression * 0.45)
-            target = pygame.Vector2(
-                config.lerp(home_x, intercept_x, forward), predicted_y
-            )
-            self.last_mode = "intercept"
-
-        elif in_cpu_half:
+        if in_cpu_half:
             # Approach from behind the puck and choose a changing shot lane.
             approach = config.clamp((puck.pos.x - cx) / (w * 0.48), 0.0, 1.0)
             lead_x = config.lerp(puck.pos.x + paddle.radius * 1.7,
@@ -150,19 +135,17 @@ class AIController:
             self.last_mode = "attack"
 
         else:
-            # The CPU doesn't camp on one x coordinate: it shades forward and
-            # follows the puck's projected return lane with a gentle lateral sweep.
-            predicted_y, travel = self._predict(puck, home_x, layout)
-            depth = config.clamp((cx - puck.pos.x) / (w * 0.55), 0.0, 1.0)
-            forward_pressure = config.lerp(0.0, w * 0.075, aggression) * (1.0 - depth)
-            x_sweep = math.sin(self.clock * 0.82 + self.strafe_phase) * w * 0.018
-            shade = config.lerp(0.30, 0.62, aggression)
-            y_sweep = math.sin(self.clock * 1.08 + self.strafe_phase) * h * 0.018
+            # Puck is on the player's half: stay at the forward edge of the
+            # CPU's legal zone and pressure the return lane. The paddle cannot
+            # cross the center line, so it prepares to attack immediately.
+            press_x = min(layout.p2_max_x, layout.p2_min_x + w * 0.035)
+            predicted_y, travel = self._predict(puck, press_x, layout)
+            y_offset = math.sin(self.clock * 1.35 + self.strafe_phase) * h * 0.012
             target = pygame.Vector2(
-                home_x - forward_pressure + x_sweep,
-                config.lerp(cy, predicted_y, shade) + y_sweep,
+                press_x,
+                config.clamp(predicted_y + y_offset, low, high),
             )
-            self.last_mode = "recover"
+            self.last_mode = "attack"
 
         # A little uncertainty per decision keeps the CPU human-like, not random.
         error = self.rng.uniform(-self.preset["aim_error"], self.preset["aim_error"])
