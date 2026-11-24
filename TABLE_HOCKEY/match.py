@@ -60,7 +60,7 @@ class Match:
         curve = progress ** 0.88
         base = dict(base_preset or config.AI_BASE_PRESET)
         return {
-            "max_speed": base["max_speed"] + 420.0 * curve,
+            "max_speed": base["max_speed"] + 500.0 * curve,
             "reaction": max(0.025, base["reaction"] - 0.015 * curve),
             "aim_error": max(0.35, base["aim_error"] - 1.65 * curve),
             "aggression": min(0.99, base["aggression"] + 0.17 * curve),
