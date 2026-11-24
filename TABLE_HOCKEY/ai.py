@@ -118,32 +118,34 @@ class AIController:
             desired_goal_y += math.sin(self.clock * 1.7 + self.strafe_phase) * h * 0.025
             desired_goal_y = config.clamp(desired_goal_y, goal_low, goal_high)
 
-            shot = pygame.Vector2(layout.p1_goal_x - puck.pos.x,
-                                  desired_goal_y - predicted_y)
+            # Build the strike from the puck's predicted contact position.
+            # The target must overlap the puck's collision radius slightly;
+            # stopping outside that radius makes the CPU look like it is only following.
+            predicted_puck = pygame.Vector2(read_x, predicted_y)
+            shot = pygame.Vector2(layout.p1_goal_x - predicted_puck.x,
+                                  desired_goal_y - predicted_puck.y)
             if shot.length_squared() > 1.0:
                 shot.normalize_ip()
             else:
                 shot.update(-1.0, 0.0)
 
-            contact_gap = paddle.radius + puck.radius + 4.0 * layout.scale
-            contact = pygame.Vector2(puck.pos.x, predicted_y) - shot * contact_gap
-            # Don't rush straight at the puck: take a moving angle around it.
-            orbit = math.sin(self.clock * 1.25 + self.strafe_phase) * paddle.radius * 0.10
-            contact.y += orbit * (0.20 + aggression * 0.25)
+            contact_gap = max(
+                1.0,
+                paddle.radius + puck.radius - 2.0 * layout.scale,
+            )
+            contact = predicted_puck - shot * contact_gap
+            # Keep the approach line stable so the CPU drives through the puck
+            # instead of orbiting beside it.
             contact.x = config.clamp(contact.x,
-                                     cx + paddle.radius * 0.55, layout.p2_max_x)
+                                     layout.p2_min_x, layout.p2_max_x)
             contact.y = config.clamp(contact.y, max(layout.min_y, low),
                                       min(layout.max_y, high))
-            # On slow pucks, close distance; on fast pucks, lead the future contact.
-            # Commit to the strike instead of merely shadowing the puck.
-            # Move decisively to the contact point, then let paddle momentum drive
-            # the puck toward the selected goal lane.
             distance_to_contact = paddle.pos.distance_to(contact)
             urgency = config.clamp(distance_to_contact / max(1.0, w * 0.22), 0.0, 1.0)
-            commit = 0.88 + 0.10 * urgency
+            commit = 0.94 + 0.06 * urgency
             target = pygame.Vector2(
                 config.lerp(home_x, contact.x, commit),
-                config.lerp(paddle.pos.y, contact.y, 0.92),
+                contact.y,
             )
             self.last_mode = "attack"
 
@@ -185,7 +187,7 @@ class AIController:
         threat = self.last_mode == "intercept"
         attacking = self.last_mode == "attack"
         tracking = self.preset["tracking"] * (
-            2.25 if attacking else (1.55 if threat else 1.0)
+            3.0 if attacking else (1.65 if threat else 1.0)
         )
         response = 1.0 - math.exp(-tracking * dt)
         self.target += (self.planned_target - self.target) * response
@@ -206,9 +208,9 @@ class AIController:
         base_speed = self.preset["max_speed"] * layout.scale * paddle_speed_scale
         desired_speed = base_speed * mode_factor
         braking_distance = max(
-            paddle.radius * (0.28 if attacking else 0.8),
-            desired_speed * desired_speed / (2600.0 if attacking else 1900.0),
+            paddle.radius * (0.10 if attacking else 0.8),
+            desired_speed * desired_speed / (3400.0 if attacking else 1900.0),
         )
         if distance < braking_distance:
-            desired_speed *= max(0.48 if attacking else 0.22, distance / braking_distance)
+            desired_speed *= max(0.72 if attacking else 0.22, distance / braking_distance)
         return direction, desired_speed
