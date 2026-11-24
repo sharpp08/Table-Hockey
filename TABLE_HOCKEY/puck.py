@@ -50,30 +50,42 @@ class Puck:
             layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             for index, point in enumerate(points[:-1]):
                 strength = (index + 1) / len(points)
+                # Smooth tail taper: older trail points dissolve instead of ending abruptly.
+                strength = strength * strength * (3.0 - 2.0 * strength)
                 rr = max(2, int(radius * strength * 0.72))
                 tint = (95, 205, 255) if index % 2 else (185, 135, 255)
                 pygame.draw.circle(
-                    layer, (*tint, int(76 * strength)),
+                    layer, (*tint, int(92 * strength)),
                     (round(point.x), round(point.y)), rr,
                 )
             surface.blit(layer, (0, 0))
 
-        # Anime-style motion cuts: short tapered energy strokes aligned to puck travel.
+        # Anime-style motion cuts fade in with speed and dissolve toward their tails.
         speed = self.velocity.length()
-        if speed > 180.0:
+        fade = max(0.0, min(1.0, (speed - 120.0) / 430.0))
+        fade = fade * fade * (3.0 - 2.0 * fade)
+        if fade > 0.015:
             direction = self.velocity.normalize()
             side = pygame.Vector2(-direction.y, direction.x)
             intensity = min(1.0, speed / 1050.0)
-            length = radius * (3.0 + 7.0 * intensity)
+            length = radius * (2.5 + 8.0 * intensity)
             streak_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
             for index, spread in enumerate((-0.52, 0.0, 0.52)):
                 offset = side * (spread * radius * 1.65)
                 start = pygame.Vector2(center) - direction * (radius * 0.8) + offset
-                end = start - direction * length
-                color = (105, 220, 255) if index != 1 else (245, 225, 255)
-                alpha = int((65 + 125 * intensity) * (1.0 if index == 1 else 0.72))
-                pygame.draw.line(streak_layer, (*color, alpha), start, end,
-                                 max(1, int(radius * (0.18 if index else 0.28))))
+                for segment in range(5):
+                    t0 = segment / 5.0
+                    t1 = (segment + 1) / 5.0
+                    a = 1.0 - t0
+                    a = a * a * fade
+                    p0 = start - direction * (length * t0)
+                    p1 = start - direction * (length * t1)
+                    color = (105, 220, 255) if index != 1 else (245, 225, 255)
+                    alpha = int((45 + 145 * intensity) * a * (1.0 if index == 1 else 0.72))
+                    pygame.draw.line(streak_layer, (*color, alpha),
+                                     (round(p0.x), round(p0.y)),
+                                     (round(p1.x), round(p1.y)),
+                                     max(1, int(radius * (0.18 if index else 0.28))))
             surface.blit(streak_layer, (0, 0))
 
         if quality.get("glow", False):
