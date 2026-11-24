@@ -17,7 +17,7 @@ class StateManager:
         self.app=app; self.current_name="MENU"; self.active=MenuState(self)
         self.fade_time=.42; self.fade_elapsed=self.fade_time
     def change(self,name,**kwargs):
-        classes={"MENU":MenuState,"SETTINGS":SettingsState,"HOW_TO":HowToState,"LEADERBOARD":LeaderboardState,
+        classes={"MENU":MenuState,"SETTINGS":SettingsState,"HOW_TO":HowToState,
                  "PLAYING":PlayingState,"PAUSED":PauseState,"GAME_OVER":EndState,"VICTORY":EndState}
         self.current_name=name
         self.active=classes[name](self,**kwargs) if kwargs else classes[name](self)
@@ -37,8 +37,7 @@ class MenuState(BaseState):
         super().__init__(manager); self.time=0.; self.index=0; self._layout()
     def _layout(self):
         w,h=self.app.screen.get_size(); cx=w//2
-        actions=[("START GAME",self.start),("LEADERBOARD",lambda:self.manager.change("LEADERBOARD")),
-                 ("SETTINGS",lambda:self.manager.change("SETTINGS",return_to="MENU")),
+        actions=[("START GAME",self.start),("SETTINGS",lambda:self.manager.change("SETTINGS",return_to="MENU")),
                  ("HOW TO PLAY",lambda:self.manager.change("HOW_TO")),("QUIT",lambda:setattr(self.app,"running",False))]
         self.buttons=[Button((cx-155,int(h*.38)+i*55,310,46),label,cb) for i,(label,cb) in enumerate(actions)]
     def start(self): self.app.new_match(); self.manager.change("PLAYING")
@@ -52,7 +51,7 @@ class MenuState(BaseState):
         glow=pygame.Surface((w,h),pygame.SRCALPHA)
         pygame.draw.circle(glow,(30,90,170,24),(w//2,int(h*.25)),int(w*.34)); screen.blit(glow,(0,0))
         draw_text(screen,"TABLE HOCKEY",(w//2,int(h*.20)),int(h*.105),config.COLOR_WHITE,True)
-        draw_text(screen,"ARCADE AIR HOCKEY",(w//2,int(h*.29)),25,config.COLOR_TEXT_DIM)
+        draw_text(screen,f"ARCADE AIR HOCKEY  •  LEVEL {self.app.current_level} / 30",(w//2,int(h*.29)),25,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
         draw_text(screen,f"DIFFICULTY  {self.app.settings.get('ai_difficulty','NORMAL')}",(w//2,int(h*.83)),26,config.COLOR_GOLD)
         draw_text(screen,"W / S or ↑ / ↓   •   ENTER to select",(w//2,int(h*.91)),20,config.COLOR_TEXT_DIM)
@@ -194,55 +193,6 @@ class SettingsState(BaseState):
             if b.handle_event(event): self.app.audio.play("click"); return
         if event.type==pygame.KEYDOWN and event.key==pygame.K_ESCAPE: self.cancel()
 
-class LeaderboardState(BaseState):
-    def __init__(self, manager):
-        super().__init__(manager)
-        self.page = 0
-        self.back = Button((35, 35, 150, 42), "BACK", lambda: self.manager.change("MENU"), config.COLOR_P2)
-        self.prev = Button((430, 650, 150, 42), "PREVIOUS", lambda: self.change_page(-1), config.COLOR_P1)
-        self.next = Button((700, 650, 150, 42), "NEXT", lambda: self.change_page(1), config.COLOR_P1)
-        try:
-            with open(SCORES_PATH, "r", encoding="utf-8") as f: self.data = json.load(f)
-            if not isinstance(self.data, dict): self.data = {}
-        except (OSError, ValueError, TypeError): self.data = {}
-        try: self.current_level = max(1, min(30, int(self.data.get("current_level", 1))))
-        except (ValueError, TypeError): self.current_level = 1
-        self.levels = self.data.get("levels", {})
-        if not isinstance(self.levels, dict): self.levels = {}
-    def change_page(self, amount): self.page = max(0, min(2, self.page + amount))
-    def update(self, dt):
-        mouse = pygame.mouse.get_pos()
-        for b in (self.back, self.prev, self.next): b.update(dt, mouse)
-    def draw(self, screen):
-        screen.fill(config.COLOR_BG); w, h = screen.get_size()
-        draw_text(screen, "LEVEL PROGRESSION", (w//2, 62), 46, config.COLOR_GOLD, True)
-        draw_text(screen, f"CURRENT LEVEL {self.current_level} / 30", (w//2, 112), 27, config.COLOR_P1_LIGHT, True)
-        first = self.page * 10 + 1
-        draw_text(screen, f"LEVELS {first:02d} - {first+9:02d}", (w//2, 153), 21, config.COLOR_TEXT_DIM)
-        for i in range(10):
-            level = first + i
-            rec = self.levels.get(str(level), {})
-            if not isinstance(rec, dict): rec = {}
-            unlocked = level <= self.current_level
-            completed = bool(rec.get("completed", False))
-            y = 190 + i * 43
-            pygame.draw.rect(screen, config.COLOR_BG_LIGHT if unlocked else (18,20,28),
-                             (w//2-340, y-17, 680, 36), border_radius=7)
-            draw_text(screen, f"LEVEL {level:02d}", (w//2-250, y), 20,
-                      config.COLOR_P1 if unlocked else config.COLOR_TEXT_DIM, True)
-            status = "COMPLETED" if completed else ("CURRENT" if level == self.current_level else ("UNLOCKED" if unlocked else "LOCKED"))
-            draw_text(screen, status, (w//2, y), 18, config.COLOR_GOLD if completed else config.COLOR_P1_LIGHT if unlocked else config.COLOR_TEXT_DIM)
-            draw_text(screen, f"W {int(rec.get('wins',0) or 0)}  L {int(rec.get('losses',0) or 0)}" if unlocked else "---",
-                      (w//2+240, y), 18, config.COLOR_TEXT_DIM)
-        self.back.draw(screen); self.prev.draw(screen); self.next.draw(screen)
-        draw_text(screen, f"PAGE {self.page+1} / 3", (w//2, 672), 17, config.COLOR_TEXT_DIM)
-    def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_ESCAPE: self.manager.change("MENU"); return
-            if event.key in (pygame.K_LEFT, pygame.K_a): self.change_page(-1)
-            elif event.key in (pygame.K_RIGHT, pygame.K_d): self.change_page(1)
-        for b in (self.back, self.prev, self.next): b.handle_event(event)
-
 class EndState(BaseState):
     def __init__(self,manager):
         super().__init__(manager); self.victory=manager.current_name=="VICTORY"; self.match=self.app.match
@@ -252,57 +202,32 @@ class EndState(BaseState):
                       Button((cx-155,int(h*.85),310,46),"QUIT",lambda:setattr(self.app,"running",False))]
         self.index=0
     def _record(self):
-        """Save level results and advance campaign only after a win."""
-        import datetime
+        """Persist campaign progress; winning advances one level, losing retries."""
         os.makedirs(SAVE_DIR, exist_ok=True)
         try:
             with open(SCORES_PATH, "r", encoding="utf-8") as f: data = json.load(f)
+            if not isinstance(data, dict): data = {}
         except (OSError, ValueError, TypeError): data = {}
-        if not isinstance(data, dict): data = {}
         level = max(1, min(30, int(getattr(self.match, "level", 1))))
         levels = data.get("levels", {})
         if not isinstance(levels, dict): levels = {}
         record = levels.get(str(level), {})
         if not isinstance(record, dict): record = {}
-        wins = int(record.get("wins", 0) or 0)
-        losses = int(record.get("losses", 0) or 0)
-        best = record.get("best_time")
-        try: best = float(best) if best is not None else None
-        except (TypeError, ValueError): best = None
-        new_best = bool(self.victory and (best is None or self.match.match_time < best))
-        if self.victory:
-            wins += 1
-            record["completed"] = True
-            if new_best: best = round(self.match.match_time, 2)
-        else: losses += 1
-        record.update({"wins": wins, "losses": losses, "best_time": best})
+        record["completed"] = bool(record.get("completed", False) or self.victory)
+        record["attempts"] = int(record.get("attempts", 0) or 0) + 1
+        record["wins"] = int(record.get("wins", 0) or 0) + (1 if self.victory else 0)
+        record["losses"] = int(record.get("losses", 0) or 0) + (0 if self.victory else 1)
         levels[str(level)] = record
         data["levels"] = levels
         current = max(1, min(30, int(data.get("current_level", 1) or 1)))
         if self.victory and level >= current: current = min(30, level + 1)
         data["current_level"] = current
         self.app.current_level = current
-        difficulty = self.app.settings.get("ai_difficulty", "NORMAL")
-        aggregate = data.get(difficulty, {})
-        if not isinstance(aggregate, dict): aggregate = {}
-        aw = int(aggregate.get("wins", 0) or 0) + (1 if self.victory else 0)
-        al = int(aggregate.get("losses", 0) or 0) + (0 if self.victory else 1)
-        streak = int(aggregate.get("current_streak", 0) or 0)
-        streak = max(0, streak) + 1 if self.victory else min(0, streak) - 1
-        aggregate.update({"wins": aw, "losses": al, "matches": aw+al, "current_streak": streak})
-        data[difficulty] = aggregate
-        history = data.get("recent_matches", [])
-        if not isinstance(history, list): history = []
-        history.insert(0, {"date": datetime.datetime.now().isoformat(timespec="seconds"),
-            "level": level, "difficulty": difficulty, "result": "WIN" if self.victory else "LOSS",
-            "player_score": self.match.players[0].score, "cpu_score": self.match.players[1].score,
-            "duration": round(self.match.match_time, 2)})
-        data["recent_matches"] = history[:30]
         try:
             with open(SCORES_PATH, "w", encoding="utf-8") as f: json.dump(data, f, indent=2)
         except (OSError, TypeError, ValueError) as exc:
-            print("[career] could not save level progress:", exc)
-        return new_best
+            print("[campaign] could not save progress:", exc)
+        return self.victory
     def again(self): self.app.new_match(); self.manager.change("PLAYING")
     def menu(self): self.app.new_match(); self.manager.change("MENU")
     def update(self,dt):
@@ -316,7 +241,7 @@ class EndState(BaseState):
         draw_text(screen,f"TIME PLAYED  {self.app._format_time(self.match.match_time)}",(w//2,int(h*.37)),25)
         draw_text(screen,f"LEVEL  {self.match.level} / 30",(w//2,int(h*.43)),25,config.COLOR_GOLD)
         draw_text(screen,f"GOALS SCORED  {self.match.players[0].score}",(w//2,int(h*.49)),24)
-        status = "CAMPAIGN COMPLETE!" if self.victory and self.match.level >= 30 else (f"LEVEL {self.match.level + 1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
+        status = "LEVEL 30 MASTERED!" if self.victory and self.match.level >= 30 else (f"LEVEL {self.match.level + 1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
         draw_text(screen,status,(w//2,int(h*.55)),21,config.COLOR_TEXT_DIM)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
