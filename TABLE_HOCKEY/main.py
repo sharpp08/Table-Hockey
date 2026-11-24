@@ -142,7 +142,7 @@ class TableHockeyApp:
         surface.blit(score1, (w // 2 - 100, 20))
         surface.blit(score2, (w // 2 + 65, 20))
         small = pygame.font.Font(None, 25)
-        label = small.render(f"LEVEL {self.match.level}/30  •  {self.settings.get('ai_difficulty', 'NORMAL')}  •  FIRST TO {self.settings.win_score}", True, config.COLOR_TEXT_DIM)
+        label = small.render(f"LEVEL {self.match.level}/30  •  FIRST TO {self.settings.win_score}", True, config.COLOR_TEXT_DIM)
         surface.blit(label, label.get_rect(midtop=(w // 2, 82)))
         if self.settings.get("show_match_timer", False):
             timer = small.render(self._format_time(self.match.match_time), True, config.COLOR_TEXT)
