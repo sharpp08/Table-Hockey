@@ -154,7 +154,7 @@ class HowToState(BaseState):
         draw_arcade_background(screen,self.app.game_time,"HOW TO PLAY","QUICK START • MASTER THE TABLE")
         panel=(int(w*.16),int(h*.29),int(w*.68),int(h*.48))
         draw_arcade_panel(screen,panel,config.COLOR_P1,225)
-        lines=["01   MOVE YOUR PADDLE  •  W A S D",
+        lines=["01   MOVE YOUR PADDLE  •  MOVE THE MOUSE",
                "02   DEFEND YOUR GOAL AND ATTACK THE CPU",
                f"03   FIRST TO {self.app.settings.win_score} GOALS WINS THE MATCH",
                "04   CPU GETS SMARTER WITH EVERY CAMPAIGN LEVEL",
@@ -168,7 +168,10 @@ class HowToState(BaseState):
 
 class PlayingState(BaseState):
     def update(self,dt):
-        self.app.match.update(dt,pygame.key.get_pressed()); self.app.match.drain_events()
+        self.app.match.update(
+            dt, pygame.key.get_pressed(), mouse_position=pygame.mouse.get_pos()
+        )
+        self.app.match.drain_events()
         if self.app.match.state=="GAMEOVER":
             self.manager.change("VICTORY" if self.app.match.winner==1 else "GAME_OVER")
     def draw(self,screen): self.app.draw_match(screen)
