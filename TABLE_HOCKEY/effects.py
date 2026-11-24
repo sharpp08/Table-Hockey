@@ -152,6 +152,10 @@ class EffectsManager:
                 self.confetti_timer = 0.24
                 self._confetti_burst()
 
+        for wave in self.waves:
+            wave.life -= dt
+        self.waves = [wave for wave in self.waves if wave.life > 0]
+
         alive = []
         for particle in self.particles:
             particle.life -= dt
@@ -164,7 +168,6 @@ class EffectsManager:
             alive.append(particle)
         cap = max(32, self.quality.get("particles", 0) * 4)
         self.particles = alive[-cap:]
-        self.waves = [w for w in self.waves if w.life > 0]
 
     def shake_offset(self):
         if self.shake <= 0.2:
@@ -195,8 +198,12 @@ class EffectsManager:
                 half = direction * size
                 start = pygame.Vector2(pos) - half
                 end = pygame.Vector2(pos) + half
-                pygame.draw.line(layer, (*particle.color, alpha), start, end,
-                                 max(1, int(size * 0.32)))
+                pygame.draw.line(
+                    layer, (*particle.color, alpha),
+                    (round(start.x), round(start.y)),
+                    (round(end.x), round(end.y)),
+                    max(1, int(size * 0.32)),
+                )
             else:
                 pygame.draw.circle(layer, (*particle.color, alpha), pos, size)
         surface.blit(layer, (0, 0))
