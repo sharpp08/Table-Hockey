@@ -5,6 +5,7 @@ import math
 import pygame
 
 import config
+from skins import get_skin
 
 
 class Paddle:
@@ -16,6 +17,7 @@ class Paddle:
         self.radius = float(radius)
         self.color = color
         self.hit_flash = 0.0
+        self.skin_id = 0
 
     def reset(self, position, radius=None):
         self.pos.update(position)
@@ -64,14 +66,27 @@ class Paddle:
                 pygame.draw.circle(glow, (*self.color, alpha), gc, radius + extra)
             surface.blit(glow, (center[0] - gc[0], center[1] - gc[1]))
 
-        # Drop shadow, metallic rim, colored body, inset and specular shine.
+        # Drop shadow, metallic rim, and campaign skin materials.
+        skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
+        body = skin["color"] if skin else self.color
+        accent = skin["accent"] if skin else config.COLOR_WHITE
         pygame.draw.circle(surface, (5, 7, 12), (center[0] + 4, center[1] + 6), radius + 3)
-        pygame.draw.circle(surface, config.COLOR_WHITE, center, radius + 3)
-        pygame.draw.circle(surface, self.color, center, radius)
-        inner = tuple(max(0, int(c * 0.62)) for c in self.color)
+        pygame.draw.circle(surface, accent, center, radius + 3)
+        pygame.draw.circle(surface, body, center, radius)
+        inner = tuple(max(0, int(c * 0.62)) for c in body)
         pygame.draw.circle(surface, inner, center, max(4, int(radius * 0.58)))
-        pygame.draw.circle(surface, self.color, center, max(3, int(radius * 0.46)))
-        shine = tuple(min(255, int(c * 1.45)) for c in self.color)
+        pygame.draw.circle(surface, body, center, max(3, int(radius * 0.46)))
+        if skin:
+            pattern = skin["pattern"]
+            if pattern in ("orbit", "legend"):
+                pygame.draw.circle(surface, accent, center, max(4, int(radius * .76)), max(2, radius // 12))
+                pygame.draw.circle(surface, accent, (center[0], center[1] - radius // 2), max(2, radius // 9))
+            elif pattern == "flare":
+                pygame.draw.line(surface, accent, (center[0] - radius // 2, center[1] + radius // 2),
+                                 (center[0] + radius // 2, center[1] - radius // 2), max(2, radius // 8))
+            elif pattern == "core":
+                pygame.draw.circle(surface, accent, center, max(3, int(radius * .22)))
+        shine = tuple(min(255, int(c * 1.45)) for c in body)
         pygame.draw.circle(
             surface, shine,
             (center[0] - int(radius * 0.22), center[1] - int(radius * 0.25)),
