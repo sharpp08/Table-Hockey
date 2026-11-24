@@ -36,7 +36,9 @@ class TableHockeyApp:
         self.game_time = 0.0
         self.show_fps = bool(self.settings.get("show_fps", True))
         self.states = StateManager(self)
-        self.fps_font = pygame.font.Font(None, 22)
+        self.fps_font = self._font(22)
+        self._font_cache = {}
+        self._hud_panel_cache = {}
 
     def _apply_video(self):
         flags = pygame.FULLSCREEN if self.settings.fullscreen else 0
@@ -78,7 +80,7 @@ class TableHockeyApp:
         self.match = Match(self.layout, self.settings, self.audio, level=self.current_level,
                            player_skin_id=self.player_skin_id)
         self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
-        self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
+        self.view = pygame.Surface(self.layout_size)
 
     @property
     def layout_size(self):
@@ -110,7 +112,7 @@ class TableHockeyApp:
                 self.match.ai.reset(self.match.paddles[1].pos)
             self.match.configure_settings(self.settings)
             self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
-            self.view = pygame.Surface(self.layout_size, pygame.SRCALPHA)
+            self.view = pygame.Surface(self.layout_size)
         else:
             self.match.configure_settings(self.settings)
             self.renderer = TableRenderer(self.layout, self.settings.quality, self.settings.get("table_theme", "NEON"))
@@ -121,7 +123,7 @@ class TableHockeyApp:
         target = surface or self.screen
         view = self.view
         if view.get_size() != target.get_size():
-            self.view = pygame.Surface(target.get_size(), pygame.SRCALPHA)
+            self.view = pygame.Surface(target.get_size())
             view = self.view
         self.renderer.blit(view)
         quality = self.settings.quality
@@ -133,6 +135,14 @@ class TableHockeyApp:
         shake = self.match.effects.shake_offset() if self.settings.get("screen_shake", True) else (0, 0)
         target.fill(config.COLOR_BLACK)
         target.blit(view, shake)
+
+    def _font(self, size):
+        size = max(14, int(size))
+        font = self._font_cache.get(size)
+        if font is None:
+            font = pygame.font.Font(None, size)
+            self._font_cache[size] = font
+        return font
 
     def _draw_hud(self, surface):
         """Anime sports-broadcast HUD with team plates and campaign progress."""
@@ -146,15 +156,19 @@ class TableHockeyApp:
         right_rect = pygame.Rect(cx + gap // 2, top, plate_w, plate_h)
 
         def team_plate(rect, accent, label, score, align_right=False):
-            panel = pygame.Surface(rect.size, pygame.SRCALPHA)
-            pygame.draw.rect(panel, (5, 10, 22, 205), panel.get_rect(), border_radius=10)
-            pygame.draw.rect(panel, (*accent, 215), panel.get_rect(), 2, border_radius=10)
-            bar_x = rect.w - 5 if align_right else 3
-            pygame.draw.rect(panel, (*accent, 235),
-                             (bar_x, 8, 2, rect.h - 16), border_radius=1)
+            key = (rect.size, accent)
+            panel = self._hud_panel_cache.get(key)
+            if panel is None:
+                panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+                pygame.draw.rect(panel, (5, 10, 22, 205), panel.get_rect(), border_radius=10)
+                pygame.draw.rect(panel, (*accent, 215), panel.get_rect(), 2, border_radius=10)
+                bar_x = rect.w - 5 if align_right else 3
+                pygame.draw.rect(panel, (*accent, 235),
+                                 (bar_x, 8, 2, rect.h - 16), border_radius=1)
+                self._hud_panel_cache[key] = panel
             surface.blit(panel, rect.topleft)
-            label_font = pygame.font.Font(None, max(16, int(plate_h * 0.27)))
-            score_font = pygame.font.Font(None, max(34, int(plate_h * 0.70)))
+            label_font = self._font(max(16, int(plate_h * 0.27)))
+            score_font = self._font(max(34, int(plate_h * 0.70)))
             label_image = label_font.render(label, True, accent)
             score_image = score_font.render(str(score), True, config.COLOR_WHITE)
             label_x = rect.right - 12 if align_right else rect.left + 12
@@ -176,7 +190,7 @@ class TableHockeyApp:
         team_plate(left_rect, config.COLOR_P1, "PLAYER", self.match.players[0].score)
         team_plate(right_rect, config.COLOR_P2, "CPU", self.match.players[1].score, True)
 
-        level_font = pygame.font.Font(None, max(18, int(h * 0.032)))
+        level_font = self._font(max(18, int(h * 0.032)))
         level_text = level_font.render(
             f"LEVEL {self.match.level:02d} / 30", True, config.COLOR_GOLD
         )
@@ -195,7 +209,7 @@ class TableHockeyApp:
 
         if self.match.state == "COUNTDOWN":
             whole = max(1, int(config.COUNTDOWN_SECONDS - self.match.countdown + 0.5))
-            count_font = pygame.font.Font(None, 150)
+            count_font = self._font(150)
             count = count_font.render(str(whole), True, config.COLOR_GOLD)
             outline = count_font.render(str(whole), True, config.COLOR_P1)
             rect = count.get_rect(center=(cx, h // 2))
