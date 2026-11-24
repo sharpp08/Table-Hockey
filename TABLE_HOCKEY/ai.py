@@ -92,7 +92,8 @@ class AIController:
             self.last_mode = "intercept"
         elif puck.pos.x > cx - layout.inner_w * 0.10:
             # Attack from behind the puck and bias contact toward an open shooting lane.
-            predicted_y, _ = self._predict(puck, puck.pos.x, layout)
+            read_x = puck.pos.x + (1.0 if puck.velocity.x >= 0 else -1.0) * paddle.radius * 2.0
+            predicted_y, _ = self._predict(puck, read_x, layout)
             goal_y = cy + config.clamp((cy - predicted_y) * 0.22,
                                        -layout.inner_h * 0.18, layout.inner_h * 0.18)
             shot = pygame.Vector2(layout.p1_goal_x - puck.pos.x, goal_y - predicted_y)
