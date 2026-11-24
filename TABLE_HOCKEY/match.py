@@ -195,7 +195,7 @@ class Match:
 
     def _serve(self):
         target = -self.last_goal if self.last_goal else 1
-        speed = config.PUCK_MAX_SPEED * 0.42 * self.layout.scale * self.puck_speed_scale
+        speed = config.PUCK_MAX_SPEED * 0.50 * self.layout.scale * self.puck_speed_scale
         speed = min(config.PUCK_MAX_SPEED, max(config.PUCK_MIN_SPEED, speed)) * self.layout.scale
         self.puck.launch(target, speed, self.rng)
 
