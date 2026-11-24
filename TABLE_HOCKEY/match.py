@@ -194,7 +194,7 @@ class Match:
         color = self.players[scorer - 1].color
         self.effects.goal(self.goal_pos, color)
         self._play("goal")
-        self.events.append({"type": "goal", "scorer": scorer, "pos": self.goal_pos.copy()})
+        self.events.append({"type": "goal", "scorer": scorer, "pos": pygame.Vector2(self.goal_pos)})
         if self.players[scorer - 1].score >= self.settings.win_score:
             self.winner = scorer
             self.state = "GAMEOVER"
