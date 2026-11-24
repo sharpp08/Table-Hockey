@@ -20,6 +20,10 @@ class Paddle:
         self.skin_id = 0
         self.motion_trail = []
         self.trail_sample_timer = 0.0
+        self._overlay = None
+        self._overlay_size = None
+        self._glow = None
+        self._glow_size = None
 
     def reset(self, position, radius=None):
         self.pos.update(position)
@@ -77,39 +81,48 @@ class Paddle:
     def draw(self, surface, quality, game_time=0.0):
         center = (round(self.pos.x), round(self.pos.y))
         radius = max(4, round(self.radius))
+        skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
+        body = skin["color"] if skin else self.color
+        accent = skin["accent"] if skin else config.COLOR_WHITE
+
         if quality.get("glow", False):
             glow_r = radius + max(8, radius // 2)
-            glow = pygame.Surface((glow_r * 2 + 2, glow_r * 2 + 2), pygame.SRCALPHA)
+            glow_size = (glow_r * 2 + 2, glow_r * 2 + 2)
+            if self._glow is None or self._glow_size != glow_size:
+                self._glow = pygame.Surface(glow_size, pygame.SRCALPHA)
+                self._glow_size = glow_size
+            glow = self._glow
+            glow.fill((0, 0, 0, 0))
             gc = (glow_r + 1, glow_r + 1)
             for extra, alpha in ((radius // 2, 12), (radius // 3, 22), (6, 38)):
                 pygame.draw.circle(glow, (*self.color, alpha), gc, radius + extra)
             surface.blit(glow, (center[0] - gc[0], center[1] - gc[1]))
 
-        # Layered afterimages fade smoothly behind the moving paddle.
-        skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
-        body = skin["color"] if skin else self.color
-        accent = skin["accent"] if skin else config.COLOR_WHITE
-        for trail_pos, age in self.motion_trail:
-            fade = max(0.0, 1.0 - age / 0.34)
-            fade = fade * fade
-            alpha = int(92 * fade)
-            if alpha <= 2:
-                continue
-            ghost_radius = max(3, int(radius * (0.82 + 0.12 * fade)))
-            ghost_size = ghost_radius * 2 + 8
-            ghost = pygame.Surface((ghost_size, ghost_size), pygame.SRCALPHA)
-            ghost_center = (ghost_size // 2, ghost_size // 2)
-            pygame.draw.circle(ghost, (*body, int(alpha * 0.30)), ghost_center, ghost_radius + 3)
-            pygame.draw.circle(ghost, (*accent, int(alpha * 0.72)), ghost_center,
-                               ghost_radius + 1, max(1, radius // 10))
-            pygame.draw.circle(ghost, (*body, alpha), ghost_center, ghost_radius)
-            surface.blit(ghost, (round(trail_pos.x) - ghost_center[0],
-                                 round(trail_pos.y) - ghost_center[1]))
+        # Reuse a single overlay for afterimages, motion cuts and hit sparks.
+        size = surface.get_size()
+        has_afterimages = bool(self.motion_trail)
+        if has_afterimages:
+            if self._overlay is None or self._overlay_size != size:
+                self._overlay = pygame.Surface(size, pygame.SRCALPHA)
+                self._overlay_size = size
+            layer = self._overlay
+            layer.fill((0, 0, 0, 0))
+            for trail_pos, age in self.motion_trail:
+                fade = max(0.0, 1.0 - age / 0.34)
+                fade = fade * fade
+                alpha = int(92 * fade)
+                if alpha <= 2:
+                    continue
+                ghost_radius = max(3, int(radius * (0.82 + 0.12 * fade)))
+                ghost_center = (round(trail_pos.x), round(trail_pos.y))
+                pygame.draw.circle(layer, (*body, int(alpha * 0.30)),
+                                   ghost_center, ghost_radius + 3)
+                pygame.draw.circle(layer, (*accent, int(alpha * 0.72)),
+                                   ghost_center, ghost_radius + 1, max(1, radius // 10))
+                pygame.draw.circle(layer, (*body, alpha), ghost_center, ghost_radius)
+            surface.blit(layer, (0, 0))
 
         # Drop shadow, metallic rim, and campaign skin materials.
-        skin = get_skin(self.skin_id) if self.side < 0 and self.skin_id > 0 else None
-        body = skin["color"] if skin else self.color
-        accent = skin["accent"] if skin else config.COLOR_WHITE
         pygame.draw.circle(surface, (5, 7, 12), (center[0] + 4, center[1] + 6), radius + 3)
         pygame.draw.circle(surface, accent, center, radius + 3)
         pygame.draw.circle(surface, body, center, radius)
@@ -133,43 +146,43 @@ class Paddle:
             max(2, int(radius * 0.13)),
         )
 
-        # Movement cuts ease in with speed and taper toward their trailing ends.
         speed = self.velocity.length()
         motion_fade = max(0.0, min(1.0, (speed - 55.0) / 300.0))
         motion_fade = motion_fade * motion_fade * (3.0 - 2.0 * motion_fade)
-        if motion_fade > 0.015:
-            direction = self.velocity.normalize()
-            side_vector = pygame.Vector2(-direction.y, direction.x)
-            length = min(radius * 2.2, speed * 0.018)
-            cuts = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            for sign in (-1, 1):
-                start = pygame.Vector2(center) - direction * (radius * 0.8) + side_vector * sign * radius * 0.48
-                mid = start - direction * (length * 0.55)
-                end = start - direction * length
-                pygame.draw.line(cuts, (*accent, int(145 * motion_fade)),
-                                 (round(start.x), round(start.y)),
-                                 (round(mid.x), round(mid.y)), max(1, radius // 9))
-                pygame.draw.line(cuts, (*accent, int(55 * motion_fade)),
-                                 (round(mid.x), round(mid.y)),
-                                 (round(end.x), round(end.y)), max(1, radius // 12))
-            surface.blit(cuts, (0, 0))
+        if motion_fade > 0.015 or self.hit_flash > 0:
+            if self._overlay is None or self._overlay_size != size:
+                self._overlay = pygame.Surface(size, pygame.SRCALPHA)
+                self._overlay_size = size
+            layer = self._overlay
+            layer.fill((0, 0, 0, 0))
 
-        # Hit sparks bloom quickly and then dissolve with the hit envelope.
-        if self.hit_flash > 0:
-            hit = max(0.0, min(1.0, self.hit_flash))
-            hit = hit * hit * (3.0 - 2.0 * hit)
-            hit_layer = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
-            pygame.draw.circle(hit_layer, (255, 255, 255, int(170 * hit)),
-                               center, radius + 7, 3)
-            burst = pygame.Surface((radius * 5, radius * 5), pygame.SRCALPHA)
-            origin = (radius * 2 + radius // 2, radius * 2 + radius // 2)
-            for angle in range(0, 360, 45):
-                a = math.radians(angle + game_time * 90.0)
-                start = (origin[0] + math.cos(a) * (radius + 3),
-                         origin[1] + math.sin(a) * (radius + 3))
-                end = (origin[0] + math.cos(a) * (radius + 11),
-                       origin[1] + math.sin(a) * (radius + 11))
-                pygame.draw.line(burst, (*accent, int(190 * hit)),
-                                 start, end, max(1, radius // 10))
-            hit_layer.blit(burst, (center[0] - origin[0], center[1] - origin[1]))
-            surface.blit(hit_layer, (0, 0))
+            if motion_fade > 0.015:
+                direction = self.velocity.normalize()
+                side_vector = pygame.Vector2(-direction.y, direction.x)
+                length = min(radius * 2.2, speed * 0.018)
+                for sign in (-1, 1):
+                    start = pygame.Vector2(center) - direction * (radius * 0.8) + side_vector * sign * radius * 0.48
+                    mid = start - direction * (length * 0.55)
+                    end = start - direction * length
+                    pygame.draw.line(layer, (*accent, int(145 * motion_fade)),
+                                     (round(start.x), round(start.y)),
+                                     (round(mid.x), round(mid.y)), max(1, radius // 9))
+                    pygame.draw.line(layer, (*accent, int(55 * motion_fade)),
+                                     (round(mid.x), round(mid.y)),
+                                     (round(end.x), round(end.y)), max(1, radius // 12))
+
+            if self.hit_flash > 0:
+                hit = max(0.0, min(1.0, self.hit_flash))
+                hit = hit * hit * (3.0 - 2.0 * hit)
+                pygame.draw.circle(layer, (255, 255, 255, int(170 * hit)),
+                                   center, radius + 7, 3)
+                origin = (center[0], center[1])
+                for angle in range(0, 360, 45):
+                    a = math.radians(angle + game_time * 90.0)
+                    start = (round(origin[0] + math.cos(a) * (radius + 3)),
+                             round(origin[1] + math.sin(a) * (radius + 3)))
+                    end = (round(origin[0] + math.cos(a) * (radius + 11)),
+                           round(origin[1] + math.sin(a) * (radius + 11)))
+                    pygame.draw.line(layer, (*accent, int(190 * hit)),
+                                     start, end, max(1, radius // 10))
+            surface.blit(layer, (0, 0))
