@@ -1,6 +1,7 @@
 """Central state manager and menu/pause/settings/end screens."""
 import json, os, pygame, config
 from menu_ui import Button, Slider, Toggle, Selector, draw_text, draw_arcade_background, draw_arcade_panel
+from skins import get_skin_name
 
 SAVE_DIR=os.path.join(os.path.dirname(os.path.abspath(__file__)),"save")
 SCORES_PATH=os.path.join(SAVE_DIR,"high_scores.json")
@@ -294,7 +295,9 @@ class SettingsState(BaseState):
 class EndState(BaseState):
     def __init__(self,manager):
         super().__init__(manager); self.victory=manager.current_name=="VICTORY"; self.match=self.app.match
-        self.record=self._record(); w,h=self.app.screen.get_size(); cx=w//2
+        self.record=self._record(); self.reward_skin_id=self.match.level if self.victory else 0
+        self.reward_skin_new=bool(self.victory and self.reward_skin_id in self.record.get("new_skins", []))
+        w,h=self.app.screen.get_size(); cx=w//2
         self.buttons=[Button((cx-155,int(h*.69),310,46),"PLAY AGAIN",self.again),
                       Button((cx-155,int(h*.77),310,46),"MAIN MENU",self.menu),
                       Button((cx-155,int(h*.85),310,46),"QUIT",lambda:setattr(self.app,"running",False))]
@@ -320,12 +323,26 @@ class EndState(BaseState):
         current = max(1, min(30, int(data.get("current_level", 1) or 1)))
         if self.victory and level >= current: current = min(30, level + 1)
         data["current_level"] = current
+        unlocked_skins = data.get("unlocked_skins", [])
+        if not isinstance(unlocked_skins, list): unlocked_skins = []
+        unlocked_skins = sorted({max(1, min(30, int(x))) for x in unlocked_skins if str(x).isdigit()})
+        new_skins = []
+        if self.victory:
+            if level not in unlocked_skins:
+                unlocked_skins.append(level)
+                unlocked_skins.sort()
+                new_skins.append(level)
+            data["equipped_skin"] = level
+            self.app.player_skin_id = level
+            self.match.paddles[0].skin_id = level
+        data["unlocked_skins"] = unlocked_skins
+        self.app.unlocked_skins = unlocked_skins
         self.app.current_level = current
         try:
             with open(SCORES_PATH, "w", encoding="utf-8") as f: json.dump(data, f, indent=2)
         except (OSError, TypeError, ValueError) as exc:
             print("[campaign] could not save progress:", exc)
-        return self.victory
+        return {"new_skins": new_skins, "unlocked_skins": unlocked_skins}
     def again(self): self.app.new_match(); self.manager.change("PLAYING")
     def menu(self): self.app.new_match(); self.manager.change("MENU")
     def update(self,dt):
@@ -347,6 +364,11 @@ class EndState(BaseState):
                   (w//2,int(h*.44)),26,config.COLOR_GOLD,True)
         status="LEVEL 30 MASTERED!" if self.victory and self.match.level>=30 else (f"LEVEL {self.match.level+1} UNLOCKED!" if self.victory else f"RETRY LEVEL {self.match.level}")
         draw_text(screen,status,(w//2,int(h*.53)),23,config.COLOR_TEXT)
+        if self.victory:
+            reward = get_skin_name(self.match.level)
+            reward_text = ("NEW PLAYER SKIN UNLOCKED!" if self.reward_skin_new else "PLAYER SKIN EARNED")
+            draw_text(screen,reward_text,(w//2,int(h*.59)),21,config.COLOR_GOLD,True)
+            draw_text(screen,f"{reward}  •  NOW EQUIPPED",(w//2,int(h*.635)),20,config.COLOR_TEXT)
         for b in self.buttons: b.draw(screen)
     def handle_event(self,event):
         if event.type==pygame.KEYDOWN:
