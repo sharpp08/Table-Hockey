@@ -83,8 +83,9 @@ class AIController:
         in_cpu_half = puck.pos.x > cx
         danger = toward_cpu and puck.pos.x > cx - w * 0.16
 
-        if danger:
-            # Read the lane in front of the goal, not just the puck's current position.
+        if danger and not in_cpu_half:
+            # Defend only while the puck is still on the player's half. Once it
+            # crosses into CPU territory, switch to an actual counter-attack.
             urgency = config.clamp(
                 1.0 - (layout.p2_goal_x - puck.pos.x) / (w * 0.68), 0.0, 1.0
             )
@@ -131,7 +132,7 @@ class AIController:
 
             contact_gap = max(
                 1.0,
-                paddle.radius + puck.radius - 2.0 * layout.scale,
+                paddle.radius + puck.radius - max(4.0, 0.20 * layout.scale),
             )
             contact = predicted_puck - shot * contact_gap
             # Keep the approach line stable so the CPU drives through the puck
@@ -142,11 +143,10 @@ class AIController:
                                       min(layout.max_y, high))
             distance_to_contact = paddle.pos.distance_to(contact)
             urgency = config.clamp(distance_to_contact / max(1.0, w * 0.22), 0.0, 1.0)
-            commit = 0.94 + 0.06 * urgency
-            target = pygame.Vector2(
-                config.lerp(home_x, contact.x, commit),
-                contact.y,
-            )
+            # Do not blend back toward the home/guard position here:
+            # that blend is what caused the CPU to stop beside the puck.
+            # Commit to the contact coordinate and drive through the strike.
+            target = pygame.Vector2(contact.x, contact.y)
             self.last_mode = "attack"
 
         else:
