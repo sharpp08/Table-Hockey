@@ -60,32 +60,26 @@ PADDLE_R = 0.046       # paddle radius
 PUCK_R   = 0.022       # puck radius
 
 # Physics tuning (per-second values)
-PUCK_ACCEL   = 2150.0  # extra velocity applied on a paddle hit (px/s at base)
-PUCK_FRICTION = 1.05   # exponential friction factor per second
-PUCK_MIN_SPEED = 155.0 # px/s at base resolution
-PUCK_MAX_SPEED = 1325.0
-PADDLE_SPEED   = 520.0 # px/s at base resolution
+PUCK_ACCEL   = 2350.0  # extra velocity applied on a paddle hit (px/s at base)
+PUCK_FRICTION = 0.78   # exponential friction factor per second
+PUCK_MIN_SPEED = 165.0 # px/s at base resolution
+PUCK_MAX_SPEED = 1450.0
+PADDLE_SPEED   = 565.0 # px/s at base resolution
 PADDLE_ACCEL_FACTOR = 1.68  # how much paddle velocity boosts the puck
-PADDLE_KICK      = 590.0   # base kick on a paddle hit (px/s at base)
+PADDLE_KICK      = 640.0   # base kick on a paddle hit (px/s at base)
 
 GOAL_CELEBRATION = 1.8    # seconds of the goal animation
 COUNTDOWN_SECONDS = 3     # pre-serve countdown
 MATCH_TIMER = False       # show an elapsed timer in the HUD
 
-# AI difficulty presets.
-# reaction   : seconds before the AI re-targets
-# max_speed  : paddle top speed as a fraction of a reference
-# aim_error  : random vertical error in degrees
-# aggression : how far the AI presses up-field to attack
-DIFFICULTY = {
-    # AI reaction time, movement speed, shot error and forward pressure.
-    "EASY":      {"reaction": 0.42, "max_speed": 360.0, "aim_error": 22.0, "aggression": 0.12},
-    "NORMAL":    {"reaction": 0.18, "max_speed": 500.0, "aim_error": 9.0,  "aggression": 0.36},
-    "HARD":      {"reaction": 0.085, "max_speed": 625.0, "aim_error": 3.5, "aggression": 0.55},
-    "NIGHTMARE": {"reaction": 0.045, "max_speed": 745.0, "aim_error": 0.8, "aggression": 0.76},
+# Campaign-driven CPU baseline. Match._level_ai_preset() scales these values
+# smoothly from level 1 through level 30; players never choose a separate difficulty.
+AI_BASE_PRESET = {
+    "reaction": 0.14,
+    "max_speed": 560.0,
+    "aim_error": 10.0,
+    "aggression": 0.28,
 }
-# Backwards-compatible name used by existing settings and AI call sites.
-AI_PRESETS = DIFFICULTY
 
 # Default settings (used when no config file exists yet)
 DEFAULT_SETTINGS = {
@@ -96,7 +90,6 @@ DEFAULT_SETTINGS = {
     "puck_speed": 1.0,        # 0.5 .. 1.5
     "paddle_speed": 1.0,      # 0.5 .. 1.5
     "win_score": 5,           # 3 .. 10
-    "ai_difficulty": "NORMAL",
     "fullscreen": False,
     "show_fps": True,
     "screen_shake": True,
