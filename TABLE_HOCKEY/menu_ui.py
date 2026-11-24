@@ -100,11 +100,16 @@ class Slider:
             self.dragging=False; return True
         return False
     def draw(self,surface):
-        draw_text(surface,f"{self.label}: {round(self.value*100)}%",(self.rect.centerx,self.rect.y-15),23)
-        pygame.draw.rect(surface,config.COLOR_TABLE_EDGE,self.rect,border_radius=6)
-        fill=self.rect.copy(); fill.w=int(fill.w*self.value)
-        pygame.draw.rect(surface,config.COLOR_P1,fill,border_radius=6)
-        pygame.draw.circle(surface,config.COLOR_WHITE,(self.rect.x+int(self.rect.w*self.value),self.rect.centery),9)
+        draw_text(surface,f"{self.label}  {round(self.value*100)}%",
+                  (self.rect.centerx,self.rect.y-17),22,config.COLOR_TEXT,True)
+        track=self.rect.inflate(0,5)
+        pygame.draw.rect(surface,(35,48,68),track,border_radius=7)
+        fill=track.copy(); fill.w=int(track.w*self.value)
+        pygame.draw.rect(surface,config.COLOR_P1,fill,border_radius=7)
+        knob=(self.rect.x+int(self.rect.w*self.value),self.rect.centery)
+        pygame.draw.circle(surface,(5,10,20),knob,12)
+        pygame.draw.circle(surface,config.COLOR_WHITE,knob,8)
+        pygame.draw.circle(surface,config.COLOR_P1,knob,11,2)
 
 class Toggle:
     def __init__(self,rect,label,value,callback):
@@ -114,9 +119,12 @@ class Toggle:
             self.value=not self.value; self.callback(self.value); return True
         return False
     def draw(self,surface):
-        draw_text(surface,self.label,(self.rect.left-95,self.rect.centery),23)
-        pygame.draw.rect(surface,config.COLOR_P1 if self.value else config.COLOR_TABLE_EDGE,self.rect,border_radius=12)
-        pygame.draw.circle(surface,config.COLOR_WHITE,(self.rect.right-12 if self.value else self.rect.left+12,self.rect.centery),9)
+        draw_text(surface,self.label,(self.rect.left-12,self.rect.centery),20,config.COLOR_TEXT,True)
+        pygame.draw.rect(surface,(35,48,68),self.rect.inflate(4,4),border_radius=14)
+        pygame.draw.rect(surface,config.COLOR_P1 if self.value else (65,75,91),self.rect,border_radius=12)
+        knob_x=self.rect.right-12 if self.value else self.rect.left+12
+        pygame.draw.circle(surface,(8,13,22),(knob_x,self.rect.centery),9)
+        pygame.draw.circle(surface,config.COLOR_WHITE,(knob_x,self.rect.centery),6)
 
 class Selector:
     def __init__(self,rect,label,options,value,callback):
@@ -128,6 +136,6 @@ class Selector:
             self.callback(self.value); return True
         return False
     def draw(self,surface):
-        pygame.draw.rect(surface,config.COLOR_BG_LIGHT,self.rect,border_radius=8)
-        pygame.draw.rect(surface,config.COLOR_TABLE_EDGE,self.rect,2,border_radius=8)
-        draw_text(surface,f"{self.label}: {self.value}  ›",self.rect.center,22)
+        pygame.draw.rect(surface,(9,16,29),self.rect,border_radius=8)
+        pygame.draw.rect(surface,(54,92,126),self.rect,2,border_radius=8)
+        draw_text(surface,f"{self.label}: {self.value}  ›",self.rect.center,21,config.COLOR_WHITE,True)
