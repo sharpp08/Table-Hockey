@@ -36,7 +36,7 @@ class Paddle:
         speed = base_speed if max_speed is None else max_speed
         target_velocity = direction * speed
         # Exponential response feels smooth while remaining independent of FPS.
-        response = 1.0 - math.exp(-15.0 * max(0.0, dt))
+        response = 1.0 - math.exp(-22.0 * max(0.0, dt))
         self.velocity += (target_velocity - self.velocity) * response
         if direction.length_squared() == 0 and self.velocity.length_squared() < 4.0:
             self.velocity.update(0, 0)
