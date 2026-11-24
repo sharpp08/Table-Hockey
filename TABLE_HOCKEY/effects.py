@@ -102,9 +102,12 @@ class EffectsManager:
             self.waves.append(Shockwave(origin.copy(), color, 0.8, 0.8, 170 * delay))
 
     def start_celebration(self, color):
+        # Idempotent: GAMEOVER may request celebration every frame. Do not
+        # reset the timer each frame or spawn an unbounded confetti stream.
+        if not self.celebrating:
+            self.celebration_color = color
+            self.confetti_timer = 0.0
         self.celebrating = True
-        self.celebration_color = color
-        self.confetti_timer = 0.0
 
     def stop_celebration(self):
         self.celebrating = False

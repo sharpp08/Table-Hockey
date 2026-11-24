@@ -11,7 +11,7 @@ from paddle import Paddle
 from physics import PhysicsEngine
 from puck import Puck
 from settings import Layout
-from player import Player, P1_CONTROLLER, P2_CONTROLLER
+from player import Player, HumanController, P2_CONTROLLER
 
 
 class Match:
@@ -129,7 +129,17 @@ class Match:
         # PLAYING
         self.match_time += dt
 
-        p1_dir = P1_CONTROLLER.direction(keys)
+        binds = self.settings.get("keybindings", {"up": "w", "left": "a", "down": "s", "right": "d"})
+        try:
+            p1_controller = HumanController(
+                pygame.key.key_code(binds.get("up", "w")),
+                pygame.key.key_code(binds.get("down", "s")),
+                pygame.key.key_code(binds.get("left", "a")),
+                pygame.key.key_code(binds.get("right", "d")),
+            )
+        except (ValueError, TypeError):
+            p1_controller = HumanController(pygame.K_w, pygame.K_s, pygame.K_a, pygame.K_d)
+        p1_dir = p1_controller.direction(keys)
         self.paddles[0].update(p1_dir, dt, self.layout, self.paddle_speed_scale)
 
         if self.mode == "single":
@@ -184,7 +194,7 @@ class Match:
         color = self.players[scorer - 1].color
         self.effects.goal(self.goal_pos, color)
         self._play("goal")
-        self.events.append({"type": "goal", "scorer": scorer, "pos": self.goal_pos.copy()})
+        self.events.append({"type": "goal", "scorer": scorer, "pos": pygame.Vector2(self.goal_pos)})
         if self.players[scorer - 1].score >= self.settings.win_score:
             self.winner = scorer
             self.state = "GAMEOVER"
@@ -194,9 +204,9 @@ class Match:
             self._play("win" if scorer == 1 else "lose")
             return
 
-    def pause(self, resume_state="PLAYING"):
-        if self.state in ("PLAYING", "COUNTDOWN"):
-            self.pause_return_state = resume_state
+    def pause(self, resume_state=None):
+        if self.state in ("PLAYING", "COUNTDOWN", "GOAL"):
+            self.pause_return_state = resume_state or self.state
             self.state = "PAUSED"
 
     def resume(self):
@@ -207,7 +217,7 @@ class Match:
         if self.state == "PAUSED":
             self.resume()
         else:
-            self.pause(resume_state or self.pause_return_state)
+            self.pause(resume_state)
 
     def drain_events(self):
         out, self.events = self.events, []
