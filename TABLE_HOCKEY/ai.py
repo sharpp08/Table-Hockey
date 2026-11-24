@@ -201,7 +201,7 @@ class AIController:
         # Ease speed with distance to target; avoid constant full-speed sliding.
         mode_factor = (
             0.92 if self.last_mode == "recover"
-            else (1.34 if self.last_mode == "attack" else 1.18)
+            else (1.12 if self.last_mode == "attack" else 1.18)
         )
         base_speed = self.preset["max_speed"] * layout.scale * paddle_speed_scale
         desired_speed = base_speed * mode_factor
