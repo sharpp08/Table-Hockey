@@ -154,7 +154,7 @@ Table-Hockey/
 │   ├── config.py        # Shared constants and tuning
 │   └── save/            # Runtime settings and campaign records
 ├── docs/
-│   └── architecture.png # Current application architecture diagram
+│   └── architecture.mmd # Editable Mermaid architecture diagram
 └── README.md
 ```
 
