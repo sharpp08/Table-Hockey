@@ -145,7 +145,7 @@ class TableHockeyApp:
         return font
 
     def _draw_hud(self, surface):
-        """Anime sports-broadcast HUD with team plates and campaign progress."""
+        """ sports-broadcast HUD with team plates and campaign progress."""
         w, h = surface.get_size()
         cx = w // 2
         plate_w = max(132, min(190, int(w * 0.16)))
