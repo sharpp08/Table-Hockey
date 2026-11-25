@@ -1,154 +1,87 @@
 # TABLE HOCKEY
 
-**A modern arcade-style air hockey game built with Python and Pygame-CE.**
+**A fast-paced, single-player arcade air hockey game built with Python and Pygame-CE.**
 
-Table Hockey is a single-player arcade air hockey game. Control the blue paddle, compete against a CPU opponent, score goals, and work your way through four difficulty levels. The project uses a modular Python architecture that separates the application loop, screen states, match simulation, entities, physics, rendering, audio, and settings.
+Table Hockey puts the player against an increasingly competitive CPU opponent in a 30-level campaign. Move your paddle with the mouse, return the puck, defend your goal, and clear levels to unlock new challenges and collectible paddle skins.
 
-## Architecture diagram
+## Gameplay at a glance
 
-The following Mermaid diagram recreates the architecture and relationships shown in the supplied project diagram.
+- **30-level campaign:** Select any unlocked level. Win a match to advance and unlock the next level; a loss lets you retry.
+- **Progressive CPU opponent:** The AI becomes faster, more responsive, accurate, and aggressive as the campaign advances. There is no separate difficulty selector.
+- **Mouse-controlled paddle:** Move the mouse to control the blue player paddle. The CPU controls the opposing paddle.
+- **Paddle skin rewards:** Winning campaign levels unlocks themed paddle skins. The game includes 30 skin designs, with campaign rewards saved locally.
+- **Arcade match flow:** Pre-serve countdown, active play, goal celebrations, pause, victory, and game-over screens.
+- **Anime-inspired presentation:** Neon arena visuals, puck trails and speed streaks, paddle afterimages, hit sparks, impact particles, screen shake, and goal effects.
+- **Synthesized audio:** Background music and match sound effects with separate volume controls.
+- **Customizable presentation:** Neon, Cyber, and Sunset table themes; Low, Medium, and High graphics quality; fullscreen and resolution settings.
+- **Frame-rate options:** Select a 30, 60, or 120 FPS cap, or unlimited, and toggle the FPS counter.
+- **Persistent progress and settings:** Campaign progress, unlocked/equipped skins, and user preferences are stored locally.
 
-```mermaid
-flowchart TB
-    Player((Player)) -->|plays| Main[Game loop<br/>main.py]
-    subgraph Application
-      Main -->|creates manager| States[Screen states<br/>states.py]
-    end
-    subgraph Match_Simulation
-      Match[Match lifecycle<br/>match.py]
-      States -->|builds, resets and resumes| Match
-      Match -->|updates paddles| Paddle[Paddle entity<br/>paddle.py]
-      Match -->|simulates puck| Puck[Puck entity<br/>puck.py]
-      Match -->|requests movement| AI[Opponent AI<br/>ai.py]
-      Match -->|updates collisions| Physics[Puck physics<br/>physics.py]
-      Match -->|tracks scores| Score[Player score<br/>player.py]
-    end
-    subgraph Screens_and_Rendering
-      Effects[Match effects<br/>effects.py]
-      Widgets[Menu widgets<br/>menu_ui.py]
-      Renderer[Table renderer<br/>ui.py]
-    end
-    Match -->|triggers effects| Effects
-    States -->|uses widgets| Widgets
-    States -->|draws table| Renderer
-    subgraph Configuration_and_Feedback
-      Audio[Synth audio<br/>audio.py]
-      Settings[Settings and layout<br/>settings.py]
-      Config[Game constants<br/>config.py]
-    end
-    Main -->|controls audio| Audio
-    Main -->|uses settings| Settings
-    Settings -->|validates defaults| Config
-    Config -->|tunes physics, AI and rendering| Match
-    Config --> Renderer
-    Audio -->|plays match sounds| Match
-```
+## Architecture
 
-## Features
+The diagram below is the current high-level module map. It follows the project structure and shows how the application loop, state manager, match simulation, presentation, audio, and configuration fit together.
 
-- **Arcade air hockey gameplay** with a player paddle, CPU paddle, puck, goals, and score tracking.
-- **Four CPU difficulty presets:** Easy, Normal, Hard, and Nightmare.
-- **Match flow:** pre-serve countdown, active play, goal celebration, pause, victory, and game-over screens.
-- **Adjustable match rules:** choose the winning score and tune puck and paddle speeds.
-- **Visual effects:** puck trails, glow, impact particles, goal effects, celebration effects, and optional screen shake.
-- **Multiple table palettes:** Neon, Cyber, and Sunset.
-- **Graphics quality presets:** Low, Medium, and High.
-- **Audio controls:** separate master, music, and sound-effect volume controls, plus a music enable toggle.
-- **Display options:** windowed/fullscreen mode, supported resolutions, FPS cap, and FPS counter.
-- **Control customization:** remap the movement keys.
-- **Career records:** win/loss totals, current streak, best winning time, and recent match history are stored locally.
-- **Keyboard and mouse menu navigation.**
+![Table Hockey application architecture](docs/architecture.png)
 
-## Gameplay
+### Module responsibilities
 
-The player controls the blue paddle on the left side of the table. The CPU controls the red paddle on the right. Hit the puck into the opponent's goal while defending your own goal.
+| Module | Responsibility |
+|---|---|
+| `main.py` | Initializes Pygame, settings, audio, match objects, rendering, and the main application loop. |
+| `states.py` | Owns the screen-state manager and menu, level selection, settings, how-to-play, gameplay, pause, victory, and game-over screens. It also saves campaign results. |
+| `match.py` | Coordinates match lifecycle, player/CPU updates, scoring, countdowns, and match events. |
+| `ai.py` | Calculates CPU paddle movement and attack/defense decisions. Its challenge scales with campaign level. |
+| `player.py` | Holds player/controller data used by the match. |
+| `paddle.py` | Implements paddle movement, collision-related state, skin appearance, and motion effects. |
+| `puck.py` | Holds puck movement state, trail history, and puck rendering. |
+| `physics.py` | Handles puck movement, sub-stepped collision resolution, wall/post/paddle impacts, and goal detection. |
+| `effects.py` | Manages match particles, impacts, goal effects, celebrations, and screen shake. |
+| `skins.py` | Defines the 30 campaign paddle-skin designs and skin lookup helpers. |
+| `ui.py` | Draws and caches the air-hockey table and shared presentation elements. |
+| `menu_ui.py` | Provides reusable arcade menu widgets and background/panel drawing helpers. |
+| `settings.py` | Loads, validates, persists user preferences, and calculates resolution-dependent layout geometry. |
+| `audio.py` | Manages synthesized background music, sound effects, and volume controls. |
+| `config.py` | Centralizes display settings, table geometry, colors, physics tuning, AI baseline values, and graphics-quality flags. |
 
-A match begins with a countdown. A goal triggers a short celebration before play resumes. The first side to reach the configured winning score ends the match and displays the appropriate result screen.
+## Campaign and progression
 
-The default winning score is **5 goals**. It can be adjusted in Settings.
+The campaign contains **30 levels**. Only levels reached through campaign progress are selectable.
+
+1. Start a game from the main menu and choose an unlocked campaign level.
+2. Win the match to clear that level and unlock the next one.
+3. Each new level raises the CPU challenge.
+4. A level victory unlocks its corresponding paddle skin and equips the newly earned reward.
+5. If a match is lost, the level remains available to retry.
+
+Campaign progress is saved in `TABLE_HOCKEY/save/high_scores.json`. The file tracks the unlocked campaign frontier, per-level completion/attempt/win/loss records, unlocked skins, and the equipped skin.
 
 ## Controls
 
-| Action | Default input |
+| Action | Input |
 |---|---|
-| Move paddle up | `W` |
-| Move paddle left | `A` |
-| Move paddle down | `S` |
-| Move paddle right | `D` |
-| Pause / resume flow | `Esc` |
-| Navigate menus | `W` / `S` or `↑` / `↓` |
-| Select menu item | `Enter` or `Space` |
-| Change difficulty from the main menu | `←` / `→` |
+| Move player paddle | Move the mouse |
+| Pause / resume a match | `Esc` or `P` |
+| Navigate menus | Mouse or `W` / `S` / arrow keys |
+| Select a menu item | Mouse click, `Enter`, or `Space` |
+| Navigate campaign levels | Mouse or arrow keys |
+| Return / back in menus | `Esc` or `Backspace` where shown |
 
-Movement bindings can be changed in **Settings**. Menu buttons can also be selected with the mouse.
+The player paddle is mouse-controlled during gameplay. Keyboard navigation is available for menus; movement-key remapping is not part of the current settings screen.
 
-## Difficulty levels
+## Settings
 
-The CPU presets tune its reaction interval, movement speed, aim variation, and forward pressure.
+The Settings screen includes:
 
-| Difficulty | Intended challenge |
-|---|---|
-| Easy | Slower reactions and more aim variation |
-| Normal | Balanced default opponent |
-| Hard | Faster reactions and more accurate play |
-| Nightmare | Very fast reactions, high accuracy, and aggressive positioning |
-
-The exact tuning values are maintained in `TABLE_HOCKEY/config.py`.
-
-## Settings and customization
-
-The Settings screen provides controls for:
-
-- Master, music, and sound-effect volume.
+- Master, music, and sound-effect volume sliders.
 - Music enable/disable.
-- CPU difficulty.
-- Puck speed and paddle speed.
-- Winning score.
-- Fullscreen and resolution.
-- FPS cap and FPS counter.
-- Screen shake.
-- Graphics quality.
-- Table theme.
-- Player movement keybindings.
+- Fullscreen mode and supported display resolutions.
+- FPS counter and screen-shake toggles.
+- FPS cap: 30, 60, 120, or unlimited.
+- Graphics quality: Low, Medium, or High.
+- Table theme: Neon, Cyber, or Sunset.
+- Apply, cancel/rollback, and reset-to-default actions.
 
-Available table themes:
-
-- **Neon** — the default blue/red arcade palette.
-- **Cyber** — a cooler cyan/blue palette.
-- **Sunset** — a warmer magenta/red palette.
-
-Graphics quality presets control optional rendering effects. Low disables trails and glow and reduces particles; Medium enables trails and a limited particle count; High enables trails, glow, and the highest configured particle allowance.
-
-## Architecture and module responsibilities
-
-### Application and screen flow
-
-- `main.py` is the entry point. It initializes Pygame, loads settings, starts audio, creates the match, and runs the game loop.
-- `states.py` contains the state manager and the menu, settings, help, playing, pause, leaderboard, victory, and game-over screens.
-- The state manager forwards update, draw, and input handling to the active screen state.
-
-### Match simulation
-
-- `match.py` coordinates the match lifecycle: countdown, serving, active play, goals, pause, and win conditions.
-- `paddle.py` defines paddle movement and rendering behavior.
-- `puck.py` defines puck state and movement.
-- `player.py` contains player data and controller behavior.
-- `ai.py` controls the CPU opponent.
-- `physics.py` handles puck movement, collisions, and goal detection.
-- `effects.py` manages impact, goal, particle, screen-shake, and celebration effects.
-
-### Screens and rendering
-
-- `menu_ui.py` provides reusable menu widgets such as buttons, sliders, toggles, selectors, and text drawing.
-- `ui.py` renders the air hockey table and its visual presentation.
-- The application draws the paddles, puck, effects, and match HUD over the table renderer.
-
-### Configuration and feedback
-
-- `config.py` centralizes display constants, table geometry, colors, physics tuning, difficulty presets, defaults, and graphics quality flags.
-- `settings.py` loads, validates, and saves preferences, and calculates layout geometry for the active resolution.
-- `audio.py` manages background music, sound effects, and volume levels.
-- Match results are written to the local career/high-score data file by the screen/state layer.
+Graphics quality controls optional visual effects. High quality enables the fullest configured trails, glow, particles, and blur options; lower presets reduce selected effects for less demanding systems.
 
 ## Project structure
 
@@ -156,53 +89,45 @@ Graphics quality presets control optional rendering effects. Low disables trails
 Table-Hockey/
 ├── TABLE_HOCKEY/
 │   ├── main.py          # Application entry point and game loop
-│   ├── states.py        # Screen state manager and game screens
-│   ├── match.py         # Match lifecycle and scoring
-│   ├── ai.py            # CPU opponent controller
-│   ├── physics.py       # Puck movement and collision simulation
-│   ├── paddle.py        # Paddle entity
-│   ├── puck.py          # Puck entity
-│   ├── player.py        # Player data and controllers
-│   ├── effects.py       # Particles, impacts, goals, and celebrations
+│   ├── states.py        # Screen state manager, campaign, and menus
+│   ├── match.py         # Match lifecycle and coordination
+│   ├── ai.py            # Progressive CPU opponent
+│   ├── player.py        # Player/controller data
+│   ├── physics.py       # Puck collision and goal simulation
+│   ├── paddle.py        # Paddle entity and movement effects
+│   ├── puck.py          # Puck entity and trails
+│   ├── effects.py       # Particles, impacts, and celebrations
+│   ├── skins.py         # 30 paddle skin definitions
 │   ├── ui.py            # Table renderer
 │   ├── menu_ui.py       # Reusable menu widgets
-│   ├── audio.py         # Music and sound effects
-│   ├── settings.py      # Settings persistence and layout geometry
+│   ├── audio.py         # Synthesized music and sound effects
+│   ├── settings.py      # Settings persistence and layout
 │   ├── config.py        # Shared constants and tuning
-│   ├── requirements.txt # Python dependencies
-│   └── save/            # Runtime settings and career records
+│   └── save/            # Runtime settings and campaign records
+├── docs/
+│   └── architecture.png # Current application architecture diagram
 └── README.md
 ```
 
-Runtime save files are generated as the game is used; they may not exist in a fresh clone.
+Runtime save files are created as the game is used and may not exist in a fresh clone.
 
 ## Requirements
 
-- Python **3.12** is the project's configured Python version.
-- Pygame-CE (installed from `TABLE_HOCKEY/requirements.txt`).
-- Windows, macOS, or Linux with a working display/audio environment supported by Pygame.
+- Python **3.12**
+- Pygame-CE (dependencies are listed in `TABLE_HOCKEY/requirements.txt`)
+- Windows, macOS, or Linux with a display and audio environment supported by Pygame
 
 ## Installation and launch
 
 ### Windows PowerShell
 
-Clone the repository and enter the project directory:
-
 ```powershell
 git clone https://github.com/sharpp08/Table-Hockey.git
 cd Table-Hockey
-```
 
-Create and activate a virtual environment:
-
-```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
 
-Install the dependencies and start the game:
-
-```powershell
 python -m pip install --upgrade pip
 python -m pip install -r .\TABLE_HOCKEY\requirements.txt
 python .\TABLE_HOCKEY\main.py
@@ -213,30 +138,32 @@ python .\TABLE_HOCKEY\main.py
 ```bash
 git clone https://github.com/sharpp08/Table-Hockey.git
 cd Table-Hockey
+
 python3.12 -m venv .venv
 source .venv/bin/activate
+
 python -m pip install --upgrade pip
 python -m pip install -r TABLE_HOCKEY/requirements.txt
 python TABLE_HOCKEY/main.py
 ```
 
-## Save data
+## Local save data
 
-The game stores runtime data inside `TABLE_HOCKEY/save/`:
+The game stores player-specific data in `TABLE_HOCKEY/save/`:
 
-- `settings.json` — user preferences such as volume, resolution, difficulty, graphics quality, theme, and keybindings.
-- `high_scores.json` — career results, wins/losses, streaks, best times, and recent matches.
+- `settings.json` — display, audio, graphics, and gameplay preferences.
+- `high_scores.json` — campaign level progress, per-level results, unlocked skins, and equipped skin.
 
-These files are created as needed. Keep a backup if you want to preserve settings and career history before reinstalling or resetting local game data.
+These files are generated at runtime. Back them up before deleting or replacing local save data if you want to keep your campaign progress and preferences.
 
 ## Development notes
 
-- The project is built with **Python and Pygame-CE**; the game is not a Godot project.
-- Keep gameplay simulation, rendering, screen-state handling, and settings responsibilities separated when extending the code.
-- Add new shared tuning values to `config.py` rather than scattering constants across modules.
-- Preserve existing save data when changing settings or career-record formats.
-- Test a full match lifecycle after changes: launch, score goals, pause/resume, win, lose, rematch, and return to the main menu.
-- Test each difficulty and graphics quality preset, and check that settings persist after restarting.
+- This is a **Python + Pygame-CE** project; gameplay is not implemented in Godot.
+- Keep match simulation, screen-state handling, rendering, audio, and settings responsibilities separated.
+- Put shared tuning constants in `config.py`.
+- Preserve existing local save data when changing campaign or settings formats.
+- When testing gameplay changes, cover mouse paddle control, CPU behavior across multiple campaign levels, collisions and goals, pause/resume, victory and loss progression, skin rewards, settings apply/cancel, and display modes.
+- Performance work should preserve the visual effects and quality options rather than silently disabling them.
 
 ## Repository
 
