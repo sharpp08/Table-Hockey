@@ -21,7 +21,56 @@ Table Hockey puts the player against an increasingly competitive CPU opponent in
 
 The diagram below is the current high-level module map. It follows the project structure and shows how the application loop, state manager, match simulation, presentation, audio, and configuration fit together.
 
-![Table Hockey application architecture](docs/architecture.png)
+```mermaid
+flowchart TB
+    Player((Player)) -->|plays| Main["Game Loop<br/>main.py"]
+
+    subgraph APP["Application Flow"]
+        Main -->|creates manager| States["Screen States<br/>states.py"]
+        States -->|persists campaign results| Records[("Campaign Records<br/>save/high_scores.json")]
+    end
+
+    subgraph SIM["Match Simulation"]
+        Match["Match Lifecycle<br/>match.py"]
+        Physics["Puck Physics<br/>physics.py"]
+        AI["CPU Opponent<br/>ai.py"]
+        Controller["Player Controller<br/>player.py"]
+        Paddle["Paddle Entity<br/>paddle.py"]
+        Puck["Puck Entity<br/>puck.py"]
+        Effects["Match Effects<br/>effects.py"]
+
+        Match -->|updates collisions| Physics
+        Match -->|requests CPU movement| AI
+        Match -->|reads player input| Controller
+        Match -->|updates paddles| Paddle
+        Match -->|simulates puck| Puck
+        Match -->|triggers effects| Effects
+    end
+
+    States -->|builds, resets and resumes| Match
+
+    subgraph VIEW["Screens and Presentation"]
+        Skins["Paddle Skins<br/>skins.py"]
+        Widgets["Menu Widgets<br/>menu_ui.py"]
+        Renderer["Table Renderer<br/>ui.py"]
+    end
+    Paddle -->|renders skin| Skins
+    States -->|uses widgets| Widgets
+    States -->|draws table and HUD| Renderer
+    Main -->|builds renderer| Renderer
+
+    subgraph CONFIG["Configuration and Feedback"]
+        Settings["Settings and Layout<br/>settings.py"]
+        Audio["Synth Audio<br/>audio.py"]
+        Config["Game Configuration<br/>config.py"]
+    end
+    Main -->|loads preferences| Settings
+    Main -->|starts audio| Audio
+    Settings -->|validates and saves defaults| Config
+    Config -->|tunes physics, AI and visuals| Match
+    Config -->|provides constants| Renderer
+    Match -->|plays match sounds| Audio
+```
 
 ### Module responsibilities
 
